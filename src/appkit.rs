@@ -237,6 +237,10 @@ impl NSViewController {
     pub fn view(&self) -> Option<&NSView> {
         unsafe { let p: *mut Object = msg_send![self.objid(), view]; (p as *const NSView).as_ref() }
     }
+    /// The view controller's primary view.
+    pub fn view_mut(&mut self) -> Option<&mut NSView> {
+        unsafe { let p: *mut Object = msg_send![self.objid(), view]; (p as *mut NSView).as_mut() }
+    }
     /// The localized title of the receiver's primary view.
     pub fn title(&self) -> Option<&::NSString> {
         unsafe { let p: *mut Object = msg_send![&self.0, title]; (p as *const ::NSString).as_ref() }
