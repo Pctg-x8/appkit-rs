@@ -15,7 +15,7 @@ pub fn derive_objc_object_base(input: TokenStream) -> TokenStream {
         else { panic!("Only struct can derive from ObjcObjectBase"); };
     let q = match fields {
         &syn::Fields::Unnamed(_) => quote! {
-           impl #genparams ::ObjcObjectBase for #name #genidents #where_clause {
+           impl #genparams ObjcObjectBase for #name #genidents #where_clause {
                fn objid(&self) -> &Object { &self.0 }
                fn objid_mut(&mut self) -> &mut Object { &mut self.0 }
            }
