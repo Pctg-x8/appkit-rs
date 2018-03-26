@@ -197,12 +197,12 @@ impl NSMenuItem {
 #[derive(ObjcObjectBase)] pub struct NSView(Object); DeclareClassDerivative!(NSView : NSObject);
 impl NSView {
     /// The Core Animation layer that the view uses as its backing store.
-    pub fn layer(&self) -> Option<&'static ::CALayer> {
+    pub fn layer(&self) -> Option<&::CALayer> {
         let p: *mut Object = unsafe { msg_send![self.objid(), layer] };
         unsafe { (p as *const ::CALayer).as_ref() }
     }
     /// The Core Animation layer that the view uses as its backing store.
-    pub fn layer_mut(&mut self) -> Option<&'static mut ::CALayer> {
+    pub fn layer_mut(&mut self) -> Option<&mut ::CALayer> {
         let p: *mut Object = unsafe { msg_send![self.objid_mut(), layer] };
         unsafe { (p as *mut ::CALayer).as_mut() }
     }
