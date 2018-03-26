@@ -5,8 +5,7 @@ use {CocoaObject, ObjcObjectBase, NSObject};
 
 /// An object that manages image-based content and allows you to perform animations on that content.
 #[derive(ObjcObjectBase)] pub struct CALayer(Object); DeclareClassDerivative!(CALayer : NSObject);
-impl CALayer
-{
+impl CALayer {
     pub fn set_contents_scale(&self, scale: ::CGFloat) {
         let _: () = unsafe { msg_send![self.objid(), setContentsScale: scale] };
     }
@@ -14,6 +13,8 @@ impl CALayer
         unsafe { msg_send![self.objid(), setNeedsDisplayOnBoundsChange: if v { YES } else { NO }] }
     }
     pub fn set_opaque(&self, c: bool) { unsafe { msg_send![self.objid(), setOpaque: if c { YES } else { NO }] } }
+    /// Sets the layer's frame rectangle.
+    pub fn set_frame(&mut self, rect: ::CGRect) { unsafe { msg_send![self.objid_mut(), setFrame: rect] } }
 }
 /// A layer that manages a pool of Metal drawables.
 #[derive(ObjcObjectBase)] pub struct CAMetalLayer(Object); DeclareClassDerivative!(CAMetalLayer : CALayer);

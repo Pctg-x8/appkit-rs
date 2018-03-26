@@ -200,6 +200,11 @@ impl NSView {
         let p: *mut Object = unsafe { msg_send![self.objid(), layer] };
         unsafe { (p as *const ::CALayer).as_ref() }
     }
+    /// The Core Animation layer that the view uses as its backing store.
+    pub fn layer_mut(&mut self) -> Option<&'static mut ::CALayer> {
+        let p: *mut Object = unsafe { msg_send![self.objid_mut(), layer] };
+        unsafe { (p as *mut ::CALayer).as_mut() }
+    }
     /// Sets the Core Animation layer that the view uses as its backing store.
     pub fn set_layer(&mut self, layer: *mut Object) { unsafe { msg_send![self.objid_mut(), setLayer: layer] } }
     /// Sets a boolean value indicating whether the view uses a layer as its backing store.
