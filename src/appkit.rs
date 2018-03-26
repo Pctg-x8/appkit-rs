@@ -159,9 +159,10 @@ impl NSMenuItem {
         }
     }
     /// Returns a menu item that is used to separate logical groups of menu commands.
-    pub fn separator() -> Option<CocoaObject<Self>> {
+    pub fn separator() -> Result<CocoaObject<Self>, ()> {
         let p: *mut Object = unsafe { msg_send![Class::get("NSMenuItem").unwrap(), separatorItem] };
-        if p.is_null() { None } else { Some(unsafe { (*(p as *const Self)).to_owned() }) }
+        if p.is_null() { return Err(()); }
+        unsafe { CocoaObject::from_id(msg_send![p, retain]) }
     }
 
     /// Sets the submenu of the menu item.
