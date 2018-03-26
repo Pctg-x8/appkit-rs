@@ -89,7 +89,7 @@ impl NSWindow
     pub fn new(content_rect: NSRect, style_mask: NSWindowStyleMask) -> Result<CocoaObject<Self>, ()> {
         unsafe {
             CocoaObject::from_id(msg_send![Self::alloc()?,
-                initWithContentRect: content_rect styleMask: style_mask.bits() backing: 2 deref: YES])
+                initWithContentRect: content_rect styleMask: style_mask.bits() backing: 2 defer: YES])
         }
     }
     pub unsafe fn with_view_controller_ptr(vc: *mut Object) -> Result<CocoaObject<Self>, ()> {
