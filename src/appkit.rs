@@ -123,7 +123,7 @@ impl NSMenu {
         unsafe { CocoaObject::from_id(msg_send![Class::get("NSMenu").unwrap(), new]) }
     }
     /// Adds a menu item to the end of the menu.
-    pub fn add(&mut self, item: &NSMenuItem) -> &Self {
+    pub fn add(&mut self, item: &NSMenuItem) -> &mut Self {
         let _: () = unsafe { msg_send![&self.0, addItem: &item.0] };
         return self;
     }
