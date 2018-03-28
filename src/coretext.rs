@@ -27,6 +27,16 @@ impl CTFont {
                 .ok_or(())
         }
     }
+    /// Returns a Core Graphics font reference.
+    pub fn to_cg(&self) -> Result<ExternalRc<::CGFont>, ()> {
+        unsafe { ::CGFont::own_from(CTFontCopyGraphicsFont(self as *const _ as _, null_mut())).ok_or(()) }
+    }
+    /// Returns a Core Graphics font reference and attributes.
+    pub fn to_cg_with_attributes(&self) -> Result<(ExternalRc<::CGFont>, ExternalRc<CTFontDescriptor>), ()> {
+        let mut attrs = null_mut();
+        let font_ptr = unsafe { CTFontCopyGraphicsFont(self as *const _ as _, &mut attrs) };
+        unsafe { ::CGFont::own_from(font_ptr).and_then(|f| CTFontDescriptor::own_from(attrs).map(move |d| (f, d))).ok_or(()) }
+    }
     
     /// Returns an array of languages supported by the font.
     pub fn supported_languages(&self) -> Result<ExternalRc<::CFArray>, ()> {
@@ -48,10 +58,16 @@ impl CTFont {
 pub enum CTFontDescriptor {}
 /// A reference to a CTFontDescriptor object.
 pub type CTFontDescriptorRef = *mut CTFontDescriptor;
+impl ExternalRced for CTFontDescriptor {
+    unsafe fn own_from_unchecked(p: *mut Self) -> ExternalRc<Self> {
+        ExternalRc::with_fn(p, ::cfretain::<Self>, ::cfrelease::<Self>)
+    }
+}
 
 #[link(name = "CoreText", kind = "framework")] extern "system" {
     fn CTFontCreateWithGraphicsFont(graphicsFont: ::CGFontRef, size: ::CGFloat, matrix: *const ::CGAffineTransform,
         attributes: CTFontDescriptorRef) -> CTFontRef;
+    fn CTFontCopyGraphicsFont(font: CTFontRef, attributes: *mut CTFontDescriptorRef) -> ::CGFontRef;
     fn CTFontCopySupportedLanguages(font: CTFontRef) -> ::CFArrayRef;
     fn CTFontGetGlyphsForCharacters(font: CTFontRef, characters: *const ::UniChar, glyphs: *mut ::CGGlyph,
         count: ::CFIndex) -> bool;
