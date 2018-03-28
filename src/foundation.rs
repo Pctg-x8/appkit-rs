@@ -23,7 +23,7 @@ impl NSString {
         let bytes = s.as_bytes();
         unsafe {
             CocoaObject::from_id(msg_send![Self::alloc()?,
-                initWithBytes: bytes.as_ptr() as *const c_void length: bytes.len() encoding: 4])
+                initWithBytes: bytes.as_ptr() as *const c_void length: bytes.len() encoding: 4 as ::NSUInteger])
         }
     }
     pub fn to_str(&self) -> &str { unsafe { CStr::from_ptr(msg_send![&self.0, UTF8String]).to_str().unwrap() } }
