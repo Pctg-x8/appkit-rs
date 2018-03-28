@@ -47,10 +47,6 @@ pub enum CGColor {}
 /// A set of components that define a color, with a color space specifying how to interpret them.
 pub type CGColorRef = *mut CGColor;
 
-unsafe impl ::objc::Encode for CGColor {
-    fn encode() -> ::objc::Encoding { unsafe { ::objc::Encoding::from_str("@") } }
-}
-
 /// An index into a font table.
 pub type CGFontIndex = c_ushort;
 /// An index into the internal glyph table of a font.

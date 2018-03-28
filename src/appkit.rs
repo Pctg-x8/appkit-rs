@@ -273,7 +273,7 @@ impl NSColor {
 
     /// The Core Graphics color object corresponding to the color.
     pub fn cgcolor(&self) -> &::CGColor {
-        unsafe { let p: ::CGColorRef = msg_send![self.objid(), CGColor]; &*p }
+        unsafe { let p: *mut Object = msg_send![self.objid(), CGColor]; &*(p as ::CGColorRef) }
     }
 }
 
