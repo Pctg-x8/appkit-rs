@@ -311,6 +311,8 @@ impl NSFont {
         let p: *mut Object = unsafe { msg_send![Class::get("NSFont").unwrap(), messageFontOfSize: size] };
         unsafe { (p as *const Self).as_ref().ok_or(()) }
     }
+    /// The point size of the font.
+    pub fn point_size(&self) -> ::CGFloat { unsafe { msg_send![self.objid(), pointSize] } }
 }
 /// System-defined font-weight values.
 pub type NSFontWeight = ::CGFloat;
