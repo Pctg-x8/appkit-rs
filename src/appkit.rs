@@ -314,3 +314,15 @@ impl NSFont {
 }
 /// System-defined font-weight values.
 pub type NSFontWeight = ::CGFloat;
+
+/// An object that describes the attributes of a computer's monitor or screen.
+#[derive(ObjcObjectBase)] pub struct NSScreen(Object); DeclareClassDerivative!(NSScreen : NSObject);
+impl NSScreen {
+    /// Returns the screen object containing the window with the keyboard focus.
+    pub fn main() -> &'static Self {
+        let p: *mut Object = unsafe { msg_send![Class::get("NSScreen").unwrap(), mainScreen] };
+        unsafe { (p as * const Self).as_ref().unwrap() }
+    }
+    /// The backing store pixel scale factor for the screen.
+    pub fn backing_scale_factor(&self) -> ::CGFloat { unsafe { msg_send![self.objid(), backingScaleFactor] } }
+}
