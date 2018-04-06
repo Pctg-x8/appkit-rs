@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use std::ptr::null;
 
 /// A static, plain-text Unicode string object.
-#[derive(ObjcObjectBase)]
+#[derive(ObjcObjectBase)] #[repr(C)]
 pub struct NSString(Object); DeclareClassDerivative!(NSString : NSObject);
 impl NSString {
     fn alloc() -> Result<*mut Object, ()> {
@@ -30,12 +30,12 @@ impl NSString {
 }
 
 /// A static collection of objects associated with unique keys.
-#[derive(ObjcObjectBase)]
+#[derive(ObjcObjectBase)] #[repr(C)]
 pub struct NSDictionary<KeyType: ObjcObjectBase, ObjectType: ObjcObjectBase>
     (Object, PhantomData<(*mut KeyType, *mut ObjectType)>);
 DeclareClassDerivative!(NSDictionary<K: NSCopying, O: ObjcObjectBase> : NSObject);
 /// A dynamic collection of objects associated with unique keys.
-#[derive(ObjcObjectBase)]
+#[derive(ObjcObjectBase)] #[repr(C)]
 pub struct NSMutableDictionary<KeyType: NSCopying, ObjectType: ObjcObjectBase>
     (Object, PhantomData<(*mut KeyType, *mut ObjectType)>);
 DeclareClassDerivative!(NSMutableDictionary<K: NSCopying, O: ObjcObjectBase> : NSDictionary<K, O>);
@@ -75,10 +75,10 @@ impl<KeyType: ObjcObjectBase, ObjectType: ObjcObjectBase> NSDictionary<KeyType, 
 }
 
 /// A static ordered collection of objects.
-#[derive(ObjcObjectBase)] pub struct NSArray<ObjectType: ObjcObjectBase>(Object, PhantomData<*mut ObjectType>);
+#[derive(ObjcObjectBase)] #[repr(C)] pub struct NSArray<ObjectType: ObjcObjectBase>(Object, PhantomData<*mut ObjectType>);
 DeclareClassDerivative!(NSArray<O: ObjcObjectBase> : NSObject);
 /// A dynamic ordered collection of objects.
-#[derive(ObjcObjectBase)]
+#[derive(ObjcObjectBase)] #[repr(C)]
 pub struct NSMutableArray<ObjectType: ObjcObjectBase>(Object, PhantomData<*mut ObjectType>);
 DeclareClassDerivative!(NSMutableArray<ObjectType: ObjcObjectBase> : NSArray<ObjectType>);
 impl<ObjectType: ObjcObjectBase> NSMutableArray<ObjectType> {
@@ -113,7 +113,8 @@ impl<ObjectType: ObjcObjectBase> NSArray<ObjectType> {
 }
 
 /// A representation of the code and resources stored in a bundle directory on disk.
-#[derive(ObjcObjectBase)] pub struct NSBundle(Object); DeclareClassDerivative!(NSBundle : NSObject);
+#[derive(ObjcObjectBase)] #[repr(C)]
+pub struct NSBundle(Object); DeclareClassDerivative!(NSBundle : NSObject);
 impl NSBundle {
     /// Returns the bundle object that contains the current executable.
     pub fn main() -> Result<&'static Self, ()> {
@@ -131,7 +132,8 @@ impl NSBundle {
 }
 
 /// A collection of information about the current process.
-#[derive(ObjcObjectBase)] pub struct NSProcessInfo(Object); DeclareClassDerivative!(NSProcessInfo : NSObject);
+#[derive(ObjcObjectBase)] #[repr(C)]
+pub struct NSProcessInfo(Object); DeclareClassDerivative!(NSProcessInfo : NSObject);
 impl NSProcessInfo {
     /// Returns the process information agent for the process.
     pub fn current() -> Result<&'static Self, ()> {

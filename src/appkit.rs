@@ -7,7 +7,9 @@ use {CocoaObject, CocoaString, NSObject, ObjcObjectBase};
 /*#[cfg(feature = "with_ferrite")]
 type NSRunLoopMode = *mut Object;*/
 #[cfg(feature = "with_ferrite")] #[cfg(not(feature = "manual_rendering"))] pub type CVOptionFlags = u64;
-#[link(name = "AppKit", kind = "framework")] extern {}
+#[link(name = "AppKit", kind = "framework")] extern "system" {
+    pub static NSFontAttributeName: *mut ::NSString;
+}
 /*#[cfg(feature = "with_ferrite")]
 #[link(name = "Foundation", kind = "framework")] extern "system"
 {

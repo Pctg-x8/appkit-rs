@@ -207,4 +207,8 @@ impl CTRun {
     fn CTRunGetGlyphsPtr(run: CTRunRef) -> *const ::CGGlyph;
     fn CTRunGetPositions(run: CTRunRef, range: ::CFRange, buffer: *mut ::CGPoint);
     fn CTRunGetPositionsPtr(run: CTRunRef) -> *const ::CGPoint;
+
+    // Attributes //
+    pub static kCTFontAttributeName: ::CFStringRef;
+    pub static kCTLanguageAttributeName: ::CFStringRef;
 }

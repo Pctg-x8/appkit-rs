@@ -73,6 +73,11 @@ impl From<RangeFull> for CFRange {
     fn from(_: RangeFull) -> Self { CFRange { location: 0, length: CFIndex::max_value() } }
 }
 
+pub enum CFString {}
+/// A reference to a CFString object.
+pub type CFStringRef = *mut CFString;
+TollfreeBridge!(CFString = ::NSString);
+
 #[link(name = "CoreFoundation", kind = "framework")] extern "system" {
     fn CFRetain(cf: CFTypeRef) -> CFTypeRef;
     fn CFRelease(cf: CFTypeRef);

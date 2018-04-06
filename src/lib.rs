@@ -20,8 +20,11 @@ macro_rules! DeclareClassDerivative {
 pub trait ObjcObjectBase { fn objid(&self) -> &Object; fn objid_mut(&mut self) -> &mut Object; }
 /// Identity for Object
 impl ObjcObjectBase for Object { fn objid(&self) -> &Object { self } fn objid_mut(&mut self) -> &mut Object { self } }
-#[derive(ObjcObjectBase)]
-pub struct NSObject(Object);
+/// Reference as Object
+impl<'a> ObjcObjectBase for &'a mut Object {
+    fn objid(&self) -> &Object { *self } fn objid_mut(&mut self) -> &mut Object { *self }
+}
+#[derive(ObjcObjectBase)] pub struct NSObject(Object);
 impl NSObject
 {
     pub fn retain(&self) -> *mut Self
