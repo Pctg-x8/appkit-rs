@@ -44,7 +44,9 @@ impl NSObject
 macro_rules! TollfreeBridge {
     ($a: ty = $b: ty) => {
         impl AsRef<$a> for $b { fn as_ref(&self) -> &$a { unsafe { ::std::mem::transmute(self) } } }
+        impl AsMut<$a> for $b { fn as_mut(&mut self) -> &mut $a { unsafe { ::std::mem::transmute(self) } } }
         impl AsRef<$b> for $a { fn as_ref(&self) -> &$b { unsafe { ::std::mem::transmute(self) } } }
+        impl AsMut<$b> for $a { fn as_mut(&mut self) -> &mut $b { unsafe { ::std::mem::transmute(self) } } }
     }
 }
 
