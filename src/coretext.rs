@@ -4,6 +4,7 @@ use {ExternalRc, ExternalRced};
 use std::ptr::{null, null_mut};
 use std::ops::Range;
 use std::slice;
+use std::borrow::Cow;
 
 /// An opaque type represents a Core Text font object.
 pub enum CTFont {}
@@ -170,6 +171,17 @@ impl CTRun {
         let count = self.glyph_count();
         let p = unsafe { CTRunGetPositionsPtr(self as *const _ as _) };
         return if p.is_null() { None } else { Some(unsafe { slice::from_raw_parts(p, count as _) }) };
+    }
+
+    /// Gets or Copies glyphs:
+    /// Equivalent to `self.glyph_ptr().map(Cow::from).unwrap_or_else(|| Cow::from(self.glyphs(0 .. self.glyph_count())))`
+    pub fn glyph_array(&self) -> Cow<[::CGGlyph]> {
+        self.glyph_ptr().map(Cow::from).unwrap_or_else(|| Cow::from(self.glyphs(0 .. self.glyph_count())))
+    }
+    /// Gets or Copies glyph positions relative to origin of the line:
+    /// Equivalent to `self.position_ptr().map(Cow::from).unwrap_or_else(|| Cow::from(self.positions(0 .. self.glyph_count())))`
+    pub fn glyph_rel_positions(&self) -> Cow<[::CGPoint]> {
+        self.position_ptr().map(Cow::from).unwrap_or_else(|| Cow::from(self.positions(0 .. self.glyph_count())))
     }
 }
 
