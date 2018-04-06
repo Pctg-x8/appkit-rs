@@ -144,6 +144,25 @@ impl NSProcessInfo {
     }
 }
 
+pub type NSAttributedStringKey = NSString;
+/// A string that has associated attributes for portions of its text.
+#[derive(ObjcObjectBase)] pub struct NSAttributedString(Object); DeclareClassDerivative!(NSAttributedString : NSObject);
+unsafe impl NSCopying for NSAttributedString {}
+impl NSAttributedString {
+    fn alloc() -> Result<*mut Object, ()> {
+        let p: *mut Object = unsafe { msg_send![Class::get("NSAttributedString").unwrap(), alloc] };
+        if p.is_null() { Err(()) } else { Ok(p) }
+    }
+    pub fn new(s: &NSString, attrs: Option<&NSDictionary<NSAttributedStringKey, Object>>)
+            -> Result<CocoaObject<Self>, ()> {
+        let p: *mut Object = unsafe {
+            if let Some(a) = attrs { msg_send![Self::alloc()?, initWithString: s.objid() attributes: a.objid()] }
+            else { msg_send![Self::alloc()?, initWithString: s.objid()] }
+        };
+        unsafe { CocoaObject::from_id(p) }
+    }
+}
+
 /// A protocol that objects adopt to provide functional copies of themselves.
 pub unsafe trait NSCopying : ObjcObjectBase + Sized {
     /// Returns a new instance that's a copy of the receiver.

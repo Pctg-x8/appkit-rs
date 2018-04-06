@@ -18,6 +18,8 @@ macro_rules! DeclareClassDerivative {
     };
 }
 pub trait ObjcObjectBase { fn objid(&self) -> &Object; fn objid_mut(&mut self) -> &mut Object; }
+/// Identity for Object
+impl ObjcObjectBase for Object { fn objid(&self) -> &Object { self } fn objid_mut(&mut self) -> &mut Object { self } }
 #[derive(ObjcObjectBase)]
 pub struct NSObject(Object);
 impl NSObject
@@ -33,6 +35,14 @@ impl NSObject
 #[cfg(target_pointer_width = "64")] pub type NSUInteger = u64;
 #[cfg(not(target_pointer_width = "64"))] pub type NSInteger = i32;
 #[cfg(not(target_pointer_width = "64"))] pub type NSUInteger = u32;
+
+/// Declares toll-free bridge
+macro_rules! TollfreeBridge {
+    ($a: ty = $b: ty) => {
+        impl AsRef<$a> for $b { fn as_ref(&self) -> &$a { unsafe { ::std::mem::transmute(self) } } }
+        impl AsRef<$b> for $a { fn as_ref(&self) -> &$b { unsafe { ::std::mem::transmute(self) } } }
+    }
+}
 
 mod corefoundation; pub use corefoundation::*;
 mod foundation; pub use foundation::*;

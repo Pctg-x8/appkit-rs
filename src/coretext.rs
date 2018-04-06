@@ -2,6 +2,8 @@
 
 use {ExternalRc, ExternalRced};
 use std::ptr::{null, null_mut};
+use std::ops::Range;
+use std::slice;
 
 /// An opaque type represents a Core Text font object.
 pub enum CTFont {}
@@ -64,6 +66,113 @@ impl ExternalRced for CTFontDescriptor {
     }
 }
 
+/// An opaque type that is used to generate text frames.
+pub enum CTFramesetter {}
+/// A reference to a CTFramesetter object.
+pub type CTFramesetterRef = *mut CTFramesetter;
+impl ExternalRced for CTFramesetter {
+    unsafe fn own_from_unchecked(p: *mut Self) -> ExternalRc<Self> {
+        ExternalRc::with_fn(p, ::cfretain::<Self>, ::cfrelease::<Self>)
+    }
+}
+impl CTFramesetter {
+    /// Creates an immutable framesetter object from an attributed string.
+    pub fn new<A: AsRef<::CFAttributedString> + ?Sized>(string: &A) -> Result<ExternalRc<Self>, ()> {
+        unsafe { Self::own_from(CTFramesetterCreateWithAttributedString(string.as_ref() as *const _ as _)).ok_or(()) }
+    }
+    /// Determines the frame size needed for a string range.
+    pub fn suggest_frame_size_with_constraints<R: Into<::CFRange>>(&self, str_range: R, attrs: Option<&::CFDictionary>,
+            constraints: ::CGSize) -> (::CGSize, ::CFRange) {
+        let mut fit_range = unsafe { ::std::mem::uninitialized() };
+        let frame_attrs = attrs.map_or(null_mut(), |p| p as *const _ as _);
+        let size = unsafe {
+            CTFramesetterSuggestFrameSizeWithConstraints(self as *const _ as _, str_range.into(), frame_attrs,
+                constraints, &mut fit_range)
+        };
+        return (size, fit_range);
+    }
+}
+
+/// Represents a frame containing multiple lines of text.
+pub enum CTFrame {}
+/// A reference to a Core Text frame object.
+pub type CTFrameRef = *mut CTFrame;
+impl ExternalRced for CTFrame {
+    unsafe fn own_from_unchecked(p: *mut Self) -> ExternalRc<Self> {
+        ExternalRc::with_fn(p, ::cfretain::<Self>, ::cfrelease::<Self>)
+    }
+}
+impl CTFramesetter {
+    /// Creates an immutable frame using a framesetter.
+    pub fn create_frame<R: Into<::CFRange>>(&self, str_range: R, path: &::CGPath, attributes: Option<&::CFDictionary>)
+            -> Result<ExternalRc<CTFrame>, ()> {
+        let a = attributes.map_or(null_mut(), |p| p as *const _ as _);
+        unsafe {
+            CTFrame::own_from(CTFramesetterCreateFrame(self as *const _ as _, str_range.into(), path as *const _ as _, a))
+                .ok_or(())
+        }
+    }
+}
+
+/// Represents a line of text.
+pub enum CTLine {}
+/// A reference to a line object.
+pub type CTLineRef = *mut CTLine;
+impl CTFrame {
+    /// Returns an array of lines stored in the frame.
+    pub fn lines(&self) -> Result<::ExternalRc<::CFArray>, ()> {
+        unsafe { ::CFArray::own_from(CTFrameGetLines(self as *const _ as _)).ok_or(()) }
+    }
+    /// Copies a range of line origins for a frame.
+    pub fn line_origins(&self, range: Range<::CFIndex>) -> Vec<::CGPoint> {
+        let mut v = Vec::with_capacity((range.start - range.end) as _);
+        unsafe { v.set_len((range.start - range.end) as _); }
+        unsafe { CTFrameGetLineOrigins(self as *const _ as _, range.into(), v.as_mut_ptr()); }
+        return v;
+    }
+}
+
+/// Represents a glyph run, which is a set of consecutive glyphs sharing the same attributes and direction.
+pub enum CTRun {}
+/// A reference to a run object.
+pub type CTRunRef = *mut CTRun;
+impl CTLine {
+    /// Returns the array of glyph runs that make up the line object.
+    pub fn runs(&self) -> Result<::ExternalRc<::CFArray>, ()> {
+        unsafe { ::CFArray::own_from(CTLineGetGlyphRuns(self as *const _ as _)).ok_or(()) }
+    }
+}
+impl CTRun {
+    /// Gets the glyph count for the run.
+    pub fn glyph_count(&self) -> ::CFIndex { unsafe { CTRunGetGlyphCount(self as *const _ as _) } }
+    /// Copies a range of glyphs and returns an owned buffer filled by `CTRunGetGlyphs`.
+    pub fn glyphs(&self, range: Range<::CFIndex>) -> Vec<::CGGlyph> {
+        let mut v = Vec::with_capacity((range.end - range.start) as _);
+        unsafe { v.set_len((range.end - range.start) as _); }
+        unsafe { CTRunGetGlyphs(self as *const _ as _, range.into(), v.as_mut_ptr()); }
+        return v;
+    }
+    /// Returns a slice of a direct pointer for the glyph array stored in the run.
+    pub fn glyph_ptr(&self) -> Option<&[::CGGlyph]> {
+        let count = self.glyph_count();
+        let p = unsafe { CTRunGetGlyphsPtr(self as *const _ as _) };
+        return if p.is_null() { None } else { Some(unsafe { slice::from_raw_parts(p, count as _) }) };
+    }
+    /// Copies a range of glyph positions and returns an owned buffer filled by `CTRunGetGlyphs`.
+    pub fn positions(&self, range: Range<::CFIndex>) -> Vec<::CGPoint> {
+        let mut v = Vec::with_capacity((range.end - range.start) as _);
+        unsafe { v.set_len((range.end - range.start) as _); }
+        unsafe { CTRunGetPositions(self as *const _ as _, range.into(), v.as_mut_ptr()); }
+        return v;
+    }
+    /// Returns a slice of a direct pointer for the glyph position array stored in the run.
+    pub fn position_ptr(&self) -> Option<&[::CGPoint]> {
+        let count = self.glyph_count();
+        let p = unsafe { CTRunGetPositionsPtr(self as *const _ as _) };
+        return if p.is_null() { None } else { Some(unsafe { slice::from_raw_parts(p, count as _) }) };
+    }
+}
+
 #[link(name = "CoreText", kind = "framework")] extern "system" {
     fn CTFontCreateWithGraphicsFont(graphicsFont: ::CGFontRef, size: ::CGFloat, matrix: *const ::CGAffineTransform,
         attributes: CTFontDescriptorRef) -> CTFontRef;
@@ -71,4 +180,19 @@ impl ExternalRced for CTFontDescriptor {
     fn CTFontCopySupportedLanguages(font: CTFontRef) -> ::CFArrayRef;
     fn CTFontGetGlyphsForCharacters(font: CTFontRef, characters: *const ::UniChar, glyphs: *mut ::CGGlyph,
         count: ::CFIndex) -> bool;
+    fn CTFramesetterCreateWithAttributedString(string: ::CFAttributedStringRef) -> CTFramesetterRef;
+    fn CTFramesetterCreateFrame(framesetter: CTFramesetterRef, string_range: ::CFRange, path: ::CGPathRef,
+        frame_attributes: ::CFDictionaryRef) -> CTFrameRef;
+    fn CTFramesetterSuggestFrameSizeWithConstraints(framesetter: CTFramesetterRef, string_range: ::CFRange,
+        frame_attributes: ::CFDictionaryRef, constraints: ::CGSize, fit_range: *mut ::CFRange) -> ::CGSize;
+    fn CTFrameGetLines(frame: CTFrameRef) -> ::CFArrayRef;
+    fn CTLineGetGlyphRuns(line: CTLineRef) -> ::CFArrayRef;
+    fn CTFrameGetLineOrigins(frame: CTFrameRef, range: ::CFRange, origins: *mut ::CGPoint);
+
+    // CTRun //
+    fn CTRunGetGlyphCount(run: CTRunRef) -> ::CFIndex;
+    fn CTRunGetGlyphs(run: CTRunRef, range: ::CFRange, buffer: *mut ::CGGlyph);
+    fn CTRunGetGlyphsPtr(run: CTRunRef) -> *const ::CGGlyph;
+    fn CTRunGetPositions(run: CTRunRef, range: ::CFRange, buffer: *mut ::CGPoint);
+    fn CTRunGetPositionsPtr(run: CTRunRef) -> *const ::CGPoint;
 }

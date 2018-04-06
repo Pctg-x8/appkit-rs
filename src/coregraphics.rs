@@ -3,6 +3,7 @@
 use objc::{Encode, Encoding};
 use libc::*;
 use {ExternalRc, ExternalRced};
+use std::ptr::null;
 
 /// A unique identifier for an attached display.
 pub type CGDirectDisplayID = u32;
@@ -68,7 +69,25 @@ impl ExternalRced for CGFont {
     }
 }
 
+pub enum CGPath {}
+/// An immutable graphics path: a mathmatical description of shapes or lines to be drawn in a graphics context.
+pub type CGPathRef = *mut CGPath;
+impl ExternalRced for CGPath {
+    unsafe fn own_from_unchecked(p: *mut Self) -> ExternalRc<Self> {
+        ExternalRc::with_fn(p, CGPathRetain, CGPathRelease)
+    }
+}
+impl CGPath {
+    /// Create an immutable path of a rectangle.
+    pub fn new_rect(r: CGRect, transform: Option<&CGAffineTransform>) -> Result<ExternalRc<Self>, ()> {
+        unsafe { Self::own_from(CGPathCreateWithRect(r, transform.map_or(null(), |p| p as *const _))).ok_or(()) }
+    }
+}
+
 #[link(name = "CoreGraphics", kind = "framework")] extern "system" {
     fn CGFontRelease(font: CGFontRef);
     fn CGFontRetain(font: CGFontRef) -> CGFontRef;
+    fn CGPathCreateWithRect(rect: CGRect, transform: *const CGAffineTransform) -> CGPathRef;
+    fn CGPathRelease(path: CGPathRef);
+    fn CGPathRetain(path: CGPathRef) -> CGPathRef;
 }
