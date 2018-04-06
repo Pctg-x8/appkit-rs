@@ -26,8 +26,8 @@ impl CFArray {
     /// Returns the number of values currently in an array.
     pub fn len(&self) -> CFIndex { unsafe { CFArrayGetCount(self as *const _ as _) } }
     /// Retrieves a value at a given index.
-    pub unsafe fn get<T: ExternalRced>(&self, idx: CFIndex) -> Option<ExternalRc<T>> {
-        T::own_from(CFArrayGetValueAtIndex(self as *const _ as _, idx) as _)
+    pub unsafe fn get<T: ExternalRced>(&self, idx: CFIndex) -> Option<&T> {
+        (CFArrayGetValueAtIndex(self as *const _ as _, idx) as *const T).as_ref()
     }
 }
 /// toll-free bridging
