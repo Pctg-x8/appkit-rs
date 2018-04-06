@@ -21,8 +21,9 @@ pub trait ObjcObjectBase { fn objid(&self) -> &Object; fn objid_mut(&mut self) -
 /// Identity for Object
 impl ObjcObjectBase for Object { fn objid(&self) -> &Object { self } fn objid_mut(&mut self) -> &mut Object { self } }
 /// Reference as Object
-impl<'a> ObjcObjectBase for &'a mut Object {
-    fn objid(&self) -> &Object { *self } fn objid_mut(&mut self) -> &mut Object { *self }
+impl<'a, T: 'a> ObjcObjectBase for &'a mut T where T: ObjcObjectBase {
+    fn objid(&self) -> &Object { unsafe { std::mem::transmute_copy(self) } }
+    fn objid_mut(&mut self) -> &mut Object { unsafe { std::mem::transmute_copy(self) } }
 }
 #[derive(ObjcObjectBase)] pub struct NSObject(Object);
 impl NSObject

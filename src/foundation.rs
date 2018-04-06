@@ -173,6 +173,7 @@ pub unsafe trait NSCopying : ObjcObjectBase + Sized {
         unsafe { CocoaObject::from_id(msg_send![self.objid(), copyWithZone: null::<Object>()]) }
     }
 }
+unsafe impl<'a, T: 'a + ?Sized> NSCopying for &'a mut T where T: NSCopying + ObjcObjectBase {}
 unsafe impl<O: ObjcObjectBase> NSCopying for NSArray<O> {}
 unsafe impl<K: ObjcObjectBase, O: ObjcObjectBase> NSCopying for NSDictionary<K, O> {}
 unsafe impl NSCopying for NSString {}
