@@ -9,6 +9,8 @@ use std::ptr::null;
 pub type CGDirectDisplayID = u32;
 #[cfg(target_pointer_width = "64")] pub type CGFloat = f64;
 #[cfg(not(target_pointer_width = "64"))] pub type CGFloat = f32;
+#[cfg(target_pointer_width = "64")] pub const CGFLOAT_MAX: CGFloat = ::std::f64::MAX;
+#[cfg(not(target_pointer_width = "64"))] pub const CGFLOAT_MAX: CGFloat = ::std::f32::MAX;
 #[repr(C)] #[derive(Debug, Clone, PartialEq)] pub struct CGPoint { pub x: CGFloat, pub y: CGFloat }
 #[repr(C)] #[derive(Debug, Clone, PartialEq)] pub struct CGSize  { pub width: CGFloat, pub height: CGFloat }
 #[repr(C)] #[derive(Debug, Clone, PartialEq)] pub struct CGRect  { pub origin: CGPoint, pub size: CGSize }
