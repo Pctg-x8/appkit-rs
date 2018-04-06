@@ -172,6 +172,10 @@ impl CTRun {
         let p = unsafe { CTRunGetPositionsPtr(self as *const _ as _) };
         return if p.is_null() { None } else { Some(unsafe { slice::from_raw_parts(p, count as _) }) };
     }
+    /// Returns the attribute dictionary that was used to create the glyph run.
+    pub fn attributes(&self) -> Result<&::CFDictionary, ()> {
+        unsafe { (CTRunGetAttributes(self as *const _ as _)).as_ref().ok_or(()) }
+    }
 
     /// Gets or Copies glyphs:
     /// Equivalent to `self.glyph_ptr().map(Cow::from).unwrap_or_else(|| Cow::from(self.glyphs(0 .. self.glyph_count())))`
@@ -207,6 +211,7 @@ impl CTRun {
     fn CTRunGetGlyphsPtr(run: CTRunRef) -> *const ::CGGlyph;
     fn CTRunGetPositions(run: CTRunRef, range: ::CFRange, buffer: *mut ::CGPoint);
     fn CTRunGetPositionsPtr(run: CTRunRef) -> *const ::CGPoint;
+    fn CTRunGetAttributes(run: CTRunRef) -> ::CFDictionaryRef;
 
     // Attributes //
     pub static kCTFontAttributeName: ::CFStringRef;
