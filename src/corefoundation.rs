@@ -76,7 +76,7 @@ impl From<RangeFrom<u32>> for CFRange {
 }
 impl From<RangeTo<u32>> for CFRange { fn from(r: RangeTo<u32>) -> Self { CFRange { location: 0, length: r.end as _ } } }
 impl From<RangeFull> for CFRange {
-    fn from(_: RangeFull) -> Self { CFRange { location: 0, length: CFIndex::max_value() } }
+    fn from(_: RangeFull) -> Self { CFRange { location: 0, length: 0 } }
 }
 
 pub enum CFString {}
