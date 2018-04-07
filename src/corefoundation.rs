@@ -48,6 +48,12 @@ impl<K: ::ObjcObjectBase, V: ::ObjcObjectBase> AsRef<::NSDictionary<K, V>> for C
 impl<K: ::ObjcObjectBase, V: ::ObjcObjectBase> AsRef<CFDictionary> for ::NSDictionary<K, V> {
     fn as_ref(&self) -> &CFDictionary { unsafe { ::std::mem::transmute(self) } }
 }
+impl CFDictionary {
+    /// Returns the value associated with a given key.
+    pub unsafe fn get<K, T>(&self, key: &K) -> Option<&T> {
+        (CFDictionaryGetValue(self as *const _ as _, key as *const K as _) as *const T).as_ref()
+    }
+}
 
 /// Manages character strings and associated sets of attributes.
 pub enum CFAttributedString {}
@@ -83,4 +89,5 @@ TollfreeBridge!(CFString = ::NSString);
     fn CFRelease(cf: CFTypeRef);
     fn CFArrayGetCount(array: CFArrayRef) -> CFIndex;
     fn CFArrayGetValueAtIndex(array: CFArrayRef, idx: CFIndex) -> *const c_void;
+    fn CFDictionaryGetValue(dict: CFDictionaryRef, key: *const c_void) -> *const c_void;
 }
