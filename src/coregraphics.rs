@@ -60,6 +60,10 @@ pub type CGGlyph = CGFontIndex;
     pub a: CGFloat, pub b: CGFloat, pub c: CGFloat, pub d: CGFloat,
     pub tx: CGFloat, pub ty: CGFloat
 }
+/// Identity scale, no rotation and transform
+impl Default for CGAffineTransform {
+    fn default() -> Self { CGAffineTransform { a: 1.0, b: 0.0, c: 1.0, d: 0.0, tx: 0.0, ty: 0.0 } }
+}
 
 /// A set of character glyphs and layout information for drawing text.
 pub enum CGFont {}
