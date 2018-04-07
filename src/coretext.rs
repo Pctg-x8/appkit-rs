@@ -62,6 +62,15 @@ impl CTFont {
         return unsafe { ::CGPath::own_from(CTFontCreatePathForGlyph(self as *const _ as _, glyph, ptf)).ok_or(()) };
     }
 }
+/// Font Metrics
+impl CTFont {
+    /// Returns the scaled font-ascent metric of the font.
+    pub fn ascent(&self) -> ::CGFloat { unsafe { CTFontGetAscent(self as *const _ as _) } }
+    /// Returns the cap-height metric of the font.
+    pub fn cap_height(&self) -> ::CGFloat { unsafe { CTFontGetCapHeight(self as *const _ as _) } }
+    /// Returns the x-height metric of the font.
+    pub fn x_height(&self) -> ::CGFloat { unsafe { CTFontGetXHeight(self as *const _ as _) } }
+}
 
 /// An opaque type represnting a font descriptor.
 pub enum CTFontDescriptor {}
@@ -212,6 +221,10 @@ impl CTRun {
     fn CTFrameGetLines(frame: CTFrameRef) -> ::CFArrayRef;
     fn CTLineGetGlyphRuns(line: CTLineRef) -> ::CFArrayRef;
     fn CTFrameGetLineOrigins(frame: CTFrameRef, range: ::CFRange, origins: *mut ::CGPoint);
+
+    fn CTFontGetCapHeight(font: CTFontRef) -> ::CGFloat;
+    fn CTFontGetXHeight(font: CTFontRef) -> ::CGFloat;
+    fn CTFontGetAscent(font: CTFontRef) -> ::CGFloat;
 
     // CTRun //
     fn CTRunGetGlyphCount(run: CTRunRef) -> ::CFIndex;
