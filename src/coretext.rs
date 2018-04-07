@@ -132,8 +132,8 @@ impl CTFrame {
     }
     /// Copies a range of line origins for a frame.
     pub fn line_origins(&self, range: Range<::CFIndex>) -> Vec<::CGPoint> {
-        let mut v = Vec::with_capacity((range.start - range.end) as _);
-        unsafe { v.set_len((range.start - range.end) as _); }
+        let mut v = Vec::with_capacity((range.end - range.start) as _);
+        unsafe { v.set_len((range.end - range.start) as _); }
         unsafe { CTFrameGetLineOrigins(self as *const _ as _, range.into(), v.as_mut_ptr()); }
         return v;
     }
