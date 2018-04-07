@@ -86,8 +86,10 @@ DeclareClassDerivative!(NSMutableArray<ObjectType: ObjcObjectBase> : NSArray<Obj
 impl<ObjectType: ObjcObjectBase> NSMutableArray<ObjectType> {
     /// Creates a newly allocated array.
     pub fn new<'a>() -> Result<&'a mut Self, ()> {
-        let p: *mut Object = msg_send![Class::get("NSMutableArray").unwrap(), array];
-        return (p as *mut Self).as_mut().ok_or(());
+        unsafe {
+            let p: *mut Object = msg_send![Class::get("NSMutableArray").unwrap(), array];
+            return (p as *mut Self).as_mut().ok_or(());
+        }
     }
     /// Creates and returns an `NSMutableArray` object with enough allocated memory to initially hold a given number of objects.
     pub fn with_capacity<'a>(cap: ::NSUInteger) -> Result<&'a mut Self, ()> {
