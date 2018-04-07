@@ -42,15 +42,16 @@ DeclareClassDerivative!(NSMutableDictionary<K: NSCopying, O: ObjcObjectBase> : N
 impl<KeyType: NSCopying, ObjectType: ObjcObjectBase> NSMutableDictionary<KeyType, ObjectType> {
     /// Creates and returns a mutable dictionary, initially giving it enough allocated memory to
     /// hold a given number of entries.
-    pub fn with_capacity(cap: ::NSUInteger) -> Result<CocoaObject<Self>, ()> {
+    pub fn with_capacity<'a>(cap: ::NSUInteger) -> Result<&'a Self, ()> {
         unsafe {
-            CocoaObject::from_id(msg_send![Class::get("NSMutableDictionary").unwrap(), dictionaryWithCapacity: cap])
+            (msg_send![Class::get("NSMutableDictionary").unwrap(), dictionaryWithCapacity: cap] as *mut Self)
+                .as_ref().ok_or(())
         }
     }
     /// Creates a newly allocated mutable dictionary
-    pub fn new() -> Result<CocoaObject<Self>, ()> {
+    pub fn new<'a>() -> Result<&'a Self, ()> {
         unsafe {
-            CocoaObject::from_id(msg_send![Class::get("NSMutableDictionary").unwrap(), new])
+            (msg_send![Class::get("NSMutableDictionary").unwrap(), dictionary] as *mut Self).as_ref().ok_or(())
         }
     }
     /// Adds a given key-value pair to the dictionary.
@@ -83,12 +84,14 @@ pub struct NSMutableArray<ObjectType: ObjcObjectBase>(Object, PhantomData<*mut O
 DeclareClassDerivative!(NSMutableArray<ObjectType: ObjcObjectBase> : NSArray<ObjectType>);
 impl<ObjectType: ObjcObjectBase> NSMutableArray<ObjectType> {
     /// Creates a newly allocated array.
-    pub fn new() -> Result<CocoaObject<Self>, ()> {
-        unsafe { CocoaObject::from_id(msg_send![Class::get("NSMutableArray").unwrap(), new]) }
+    pub fn new<'a>() -> Result<&'a Self, ()> {
+        unsafe { (msg_send![Class::get("NSMutableArray").unwrap(), array] as *mut Self).as_ref().ok_or(()) }
     }
     /// Creates and returns an `NSMutableArray` object with enough allocated memory to initially hold a given number of objects.
-    pub fn with_capacity(cap: ::NSUInteger) -> Result<CocoaObject<Self>, ()> {
-        unsafe { CocoaObject::from_id(msg_send![Class::get("NSMutableArray").unwrap(), arrayWithCapacity: cap]) }
+    pub fn with_capacity<'a>(cap: ::NSUInteger) -> Result<&'a Self, ()> {
+        unsafe {
+            (msg_send![Class::get("NSMutableArray").unwrap(), arrayWithCapacity: cap] as *mut Self).as_ref().ok_or(())
+        }
     }
 
     /// Inserts a given object at the end of the array.
