@@ -283,7 +283,7 @@ impl NSColor {
 #[derive(ObjcObjectBase)] pub struct NSFont(Object); DeclareClassDerivative!(NSFont : NSObject);
 impl NSFont {
     /// Creates a font object for the specified font name and font size.
-    pub fn with_name<N: CocoaString + ?Sized>(name: &N, size: ::CGFloat) -> Result<&'static Self, ()> {
+    pub fn with_name<'a, N: CocoaString + ?Sized>(name: &N, size: ::CGFloat) -> Result<&'a Self, ()> {
         let p: *mut Object = unsafe {
             msg_send![Class::get("NSFont").unwrap(), fontWithName: name.to_nsstring().objid() size: size]
         };
@@ -291,30 +291,40 @@ impl NSFont {
     }
     /// Returns the font used by default for documents and other text under the user's control
     /// (that is, text whose font the user can normally change), in the specified size.
-    pub fn user(size: ::CGFloat) -> Result<&'static Self, ()> {
+    pub fn user<'a>(size: ::CGFloat) -> Result<&'a Self, ()> {
         let p: *mut Object = unsafe { msg_send![Class::get("NSFont").unwrap(), userFontOfSize: size] };
         unsafe { (p as *const Self).as_ref().ok_or(()) }
     }
     /// Returns the Aqua system font used for standard interface items, such as button labels,
     /// menu items, and so on, in the specified size.
-    pub fn system(size: ::CGFloat) -> Result<&'static Self, ()> {
+    pub fn system<'a>(size: ::CGFloat) -> Result<&'a Self, ()> {
         let p: *mut Object = unsafe { msg_send![Class::get("NSFont").unwrap(), systemFontOfSize: size] };
         unsafe { (p as *const Self).as_ref().ok_or(()) }
     }
     /// Returns the Aqua system font used for standard interface items, such as button labels,
     /// menu items, and so on, in the specified size and the specified weight.
-    pub fn system_with_weight(size: ::CGFloat, weight: NSFontWeight) -> Result<&'static Self, ()> {
+    pub fn system_with_weight<'a>(size: ::CGFloat, weight: NSFontWeight) -> Result<&'a Self, ()> {
         let p: *mut Object = unsafe { msg_send![Class::get("NSFont").unwrap(), systemFontOfSize: size weight: weight] };
         unsafe { (p as *const Self).as_ref().ok_or(()) }
     }
     /// Returns the font used for standard interface items, such as button labels,
     /// menu items, and so on, in the specified size.
-    pub fn message(size: ::CGFloat) -> Result<&'static Self, ()> {
+    pub fn message<'a>(size: ::CGFloat) -> Result<&'a Self, ()> {
         let p: *mut Object = unsafe { msg_send![Class::get("NSFont").unwrap(), messageFontOfSize: size] };
+        unsafe { (p as *const Self).as_ref().ok_or(()) }
+    }
+    /// Returns the font used for standard interface labels in the specified size.
+    pub fn label<'a>(size: ::CGFloat) -> Result<&'a Self, ()> {
+        let p: *mut Object = unsafe { msg_send![Class::get("NSFont").unwrap(), labelFontOfSize: size] };
         unsafe { (p as *const Self).as_ref().ok_or(()) }
     }
     /// The point size of the font.
     pub fn point_size(&self) -> ::CGFloat { unsafe { msg_send![self.objid(), pointSize] } }
+
+    /// Returns the size of the standard system font.
+    pub fn system_font_size() -> ::CGFloat { unsafe { msg_send![Class::get("NSFont").unwrap(), systemFontSize] } }
+    /// Returns the size of the standard label font.
+    pub fn label_font_size() -> ::CGFloat { unsafe { msg_send![Class::get("NSFont").unwrap(), labelFontSize] } }
 }
 /// System-defined font-weight values.
 pub type NSFontWeight = ::CGFloat;
