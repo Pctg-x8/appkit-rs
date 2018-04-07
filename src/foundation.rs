@@ -2,6 +2,7 @@
 
 use objc::runtime::*;
 use {CocoaObject, ObjcObjectBase, NSObject};
+use std::os::raw::*;
 use std::ffi::CStr;
 use std::os::raw::c_void;
 use std::marker::PhantomData;
@@ -27,6 +28,20 @@ impl NSString {
         }
     }
     pub fn to_str(&self) -> &str { unsafe { CStr::from_ptr(msg_send![&self.0, UTF8String]).to_str().unwrap() } }
+}
+
+/// An object wrapper for primitive scalar numeric values.
+#[derive(ObjcObjectBase)] #[repr(C)]
+pub struct NSNumber(Object); DeclareClassDerivative!(NSNumber : NSValue);
+#[derive(ObjcObjectBase)] #[repr(C)] pub struct NSValue(Object); DeclareClassDerivative!(NSValue : NSObject);
+impl NSNumber {
+    /// Creates and returns an NSNumber object containing a given value, treating it as a `float`.
+    pub fn from_float<'a>(v: c_float) -> Result<&'a Self, ()> {
+        unsafe {
+            let p: *mut Object = msg_send![Class::get("NSNumber").unwrap(), numberWithFloat: v];
+            (p as *mut Self).as_ref().ok_or(())
+        }
+    }
 }
 
 /// A static collection of objects associated with unique keys.
