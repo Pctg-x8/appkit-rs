@@ -66,6 +66,8 @@ impl CTFont {
 impl CTFont {
     /// Returns the scaled font-ascent metric of the font.
     pub fn ascent(&self) -> ::CGFloat { unsafe { CTFontGetAscent(self as *const _ as _) } }
+    /// Returns the scaled font-descent metric of the font.
+    pub fn descent(&self) -> ::CGFloat { unsafe { CTFontGetDescent(self as *const _ as _) } }
     /// Returns the cap-height metric of the font.
     pub fn cap_height(&self) -> ::CGFloat { unsafe { CTFontGetCapHeight(self as *const _ as _) } }
     /// Returns the x-height metric of the font.
@@ -225,6 +227,7 @@ impl CTRun {
     fn CTFontGetCapHeight(font: CTFontRef) -> ::CGFloat;
     fn CTFontGetXHeight(font: CTFontRef) -> ::CGFloat;
     fn CTFontGetAscent(font: CTFontRef) -> ::CGFloat;
+    fn CTFontGetDescent(font: CTFontRef) -> ::CGFloat;
 
     // CTRun //
     fn CTRunGetGlyphCount(run: CTRunRef) -> ::CFIndex;
