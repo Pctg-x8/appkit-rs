@@ -127,8 +127,8 @@ pub enum CTLine {}
 pub type CTLineRef = *mut CTLine;
 impl CTFrame {
     /// Returns an array of lines stored in the frame.
-    pub fn lines(&self) -> Result<::ExternalRc<::CFArray>, ()> {
-        unsafe { ::CFArray::own_from(CTFrameGetLines(self as *const _ as _)).ok_or(()) }
+    pub fn lines(&self) -> Result<&::CFArray, ()> {
+        unsafe { CTFrameGetLines(self as *const _ as _).as_ref().ok_or(()) }
     }
     /// Copies a range of line origins for a frame.
     pub fn line_origins(&self, range: Range<::CFIndex>) -> Vec<::CGPoint> {
@@ -145,8 +145,8 @@ pub enum CTRun {}
 pub type CTRunRef = *mut CTRun;
 impl CTLine {
     /// Returns the array of glyph runs that make up the line object.
-    pub fn runs(&self) -> Result<::ExternalRc<::CFArray>, ()> {
-        unsafe { ::CFArray::own_from(CTLineGetGlyphRuns(self as *const _ as _)).ok_or(()) }
+    pub fn runs(&self) -> Result<&::CFArray, ()> {
+        unsafe { CTLineGetGlyphRuns(self as *const _ as _).as_ref().ok_or(()) }
     }
 }
 impl CTRun {
