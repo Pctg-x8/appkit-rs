@@ -55,6 +55,12 @@ impl CTFont {
         };
         if !r { Err(()) } else { Ok(glyphs) }
     }
+    /// Creates a path for the specified glyph.
+    pub fn create_path_for_glyph(&self, glyph: ::CGGlyph, transform: Option<&::CGAffineTransform>)
+            -> Result<::ExternalRc<::CGPath>, ()> {
+        let ptf = transform.map_or(null(), |p| p as _);
+        return unsafe { ::CGPath::own_from(CTFontCreatePathForGlyph(self as *const _ as _, glyph, ptf)).ok_or(()) };
+    }
 }
 
 /// An opaque type represnting a font descriptor.
@@ -196,6 +202,8 @@ impl CTRun {
     fn CTFontCopySupportedLanguages(font: CTFontRef) -> ::CFArrayRef;
     fn CTFontGetGlyphsForCharacters(font: CTFontRef, characters: *const ::UniChar, glyphs: *mut ::CGGlyph,
         count: ::CFIndex) -> bool;
+    fn CTFontCreatePathForGlyph(font: CTFontRef, glyph: ::CGGlyph, matrix: *const ::CGAffineTransform)
+        -> ::CGPathRef;
     fn CTFramesetterCreateWithAttributedString(string: ::CFAttributedStringRef) -> CTFramesetterRef;
     fn CTFramesetterCreateFrame(framesetter: CTFramesetterRef, string_range: ::CFRange, path: ::CGPathRef,
         frame_attributes: ::CFDictionaryRef) -> CTFrameRef;
