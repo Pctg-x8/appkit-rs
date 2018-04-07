@@ -108,6 +108,9 @@ impl<T: ObjcObjectBase> Drop for CocoaObject<T> {
 impl<T: ObjcObjectBase> CocoaObject<T> {
     pub fn id(&self) -> *mut Object { self.0 as *mut _ }
     pub fn into_id(self) -> *mut Object { let id = self.id(); std::mem::forget(self); return id; }
+    pub fn retain(obj: *mut T) -> Result<Self, ()> {
+        unsafe { Self::from_id(msg_send![obj as *mut Object, retain]) }
+    }
     /// Occurs null checking
     pub unsafe fn from_id(id: *mut Object) -> Result<Self, ()> {
         if id.is_null() { Err(()) } else { Ok(Self::from_id_unchecked(id)) }
