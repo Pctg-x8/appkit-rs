@@ -236,5 +236,6 @@ impl CTRun {
 
     // Attributes //
     pub static kCTFontAttributeName: ::CFStringRef;
+    pub static kCTKernAttributeName: ::CFStringRef;
     pub static kCTLanguageAttributeName: ::CFStringRef;
 }
