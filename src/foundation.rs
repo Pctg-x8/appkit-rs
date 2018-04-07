@@ -44,14 +44,15 @@ impl<KeyType: NSCopying, ObjectType: ObjcObjectBase> NSMutableDictionary<KeyType
     /// hold a given number of entries.
     pub fn with_capacity<'a>(cap: ::NSUInteger) -> Result<&'a mut Self, ()> {
         unsafe {
-            (msg_send![Class::get("NSMutableDictionary").unwrap(), dictionaryWithCapacity: cap] as *mut Self)
-                .as_mut().ok_or(())
+            let p: *mut Object = msg_send![Class::get("NSMutableDictionary").unwrap(), dictionaryWithCapacity: cap];
+            return (p as *mut Self).as_mut().ok_or(());
         }
     }
     /// Creates a newly allocated mutable dictionary
     pub fn new<'a>() -> Result<&'a mut Self, ()> {
         unsafe {
-            (msg_send![Class::get("NSMutableDictionary").unwrap(), dictionary] as *mut Self).as_mut().ok_or(())
+            let p: *mut Object = msg_send![Class::get("NSMutableDictionary").unwrap(), dictionary];
+            return (p as *mut Self).as_mut().ok_or(());
         }
     }
     /// Adds a given key-value pair to the dictionary.
@@ -85,12 +86,14 @@ DeclareClassDerivative!(NSMutableArray<ObjectType: ObjcObjectBase> : NSArray<Obj
 impl<ObjectType: ObjcObjectBase> NSMutableArray<ObjectType> {
     /// Creates a newly allocated array.
     pub fn new<'a>() -> Result<&'a mut Self, ()> {
-        unsafe { (msg_send![Class::get("NSMutableArray").unwrap(), array] as *mut Self).as_mut().ok_or(()) }
+        let p: *mut Object = msg_send![Class::get("NSMutableArray").unwrap(), array];
+        return (p as *mut Self).as_mut().ok_or(());
     }
     /// Creates and returns an `NSMutableArray` object with enough allocated memory to initially hold a given number of objects.
     pub fn with_capacity<'a>(cap: ::NSUInteger) -> Result<&'a mut Self, ()> {
         unsafe {
-            (msg_send![Class::get("NSMutableArray").unwrap(), arrayWithCapacity: cap] as *mut Self).as_mut().ok_or(())
+            let p: *mut Object = msg_send![Class::get("NSMutableArray").unwrap(), arrayWithCapacity: cap];
+            return (p as *mut Self).as_mut().ok_or(());
         }
     }
 
