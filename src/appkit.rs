@@ -3,6 +3,7 @@
 use objc::runtime::*;
 use std::mem::zeroed;
 use {CocoaObject, CocoaString, NSObject, ObjcObjectBase};
+use appkit_derive::ObjcObjectBase;
 
 /*#[cfg(feature = "with_ferrite")]
 type NSRunLoopMode = *mut Object;*/

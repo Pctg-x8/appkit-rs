@@ -7,6 +7,7 @@ use std::ffi::CStr;
 use std::os::raw::c_void;
 use std::marker::PhantomData;
 use std::ptr::null;
+use appkit_derive::ObjcObjectBase;
 
 /// A static, plain-text Unicode string object.
 #[derive(ObjcObjectBase)] #[repr(C)]
