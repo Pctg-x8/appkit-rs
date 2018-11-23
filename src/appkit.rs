@@ -225,6 +225,8 @@ impl NSView {
     }
     /// Sets the view's frame rectangle, which defines its position and size in its superview's coordinate system.
     pub fn set_frame(&mut self, f: &NSRect) { unsafe { msg_send![self.objid_mut(), setFrame: f.clone()] } }
+    /// Gets the view's frame rectangle, which defines its position and size in its superview's coordinate system.
+    pub fn frame(&self) -> NSRect { unsafe { msg_send![self.objid(), frame] } }
     /// Converts a size from the view's interior coordinate system to its pixel aligned backing store coordinate system.
     pub fn convert_size_to_backing(&self, size: &NSSize) -> NSSize {
         unsafe { msg_send![self.objid(), convertSizeToBacking:size.clone()] }
