@@ -233,6 +233,11 @@ impl NSView {
     pub fn set_opaque(&mut self, c: bool) { 
         unsafe { msg_send![self.objid_mut(), setOpaque: if c { YES } else { NO }] }
     }
+    /// A boolean value indicating whether the view is being rendered as part of a live resizing operation.
+    pub fn in_live_resize(&self) -> bool {
+        let b: BOOL = unsafe { msg_send![self.objid(), inLiveResize] };
+        b == YES
+    }
 }
 /// A controller that manages a view, typically loaded from a nib file.
 #[derive(ObjcObjectBase)] pub struct NSViewController(Object); DeclareClassDerivative!(NSViewController : NSObject);
