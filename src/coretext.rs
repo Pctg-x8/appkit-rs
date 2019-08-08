@@ -11,6 +11,13 @@ pub enum CTFont {}
 /// A reference to a Core Text font object.
 pub type CTFontRef = *mut CTFont;
 
+#[repr(u32)] #[derive(Debug, Clone, PartialEq, Eq, Copy)]
+pub enum CTFontSymbolicTraits
+{
+    ItalicTrait = 1 << 0,
+    BoldTrait = 1 << 1
+}
+
 /// toll-free bridging
 impl AsRef<CTFont> for ::NSFont { fn as_ref(&self) -> &CTFont { unsafe { ::std::mem::transmute(self) } } }
 impl AsRef<::NSFont> for CTFont { fn as_ref(&self) -> &::NSFont { unsafe { ::std::mem::transmute(self) } } }
@@ -239,6 +246,13 @@ impl CTRun {
 
     // Attributes //
     pub static kCTFontAttributeName: ::CFStringRef;
+    pub static kCTFontFamilyNameAttribute: ::CFStringRef;
+    pub static kCTFontSizeAttribute: ::CFStringRef;
     pub static kCTKernAttributeName: ::CFStringRef;
     pub static kCTLanguageAttributeName: ::CFStringRef;
+    pub static kCTFontTraitsAttribute: ::CFStringRef;
+
+    // Traits //
+    pub static kCTFontSymbolicTrait: ::CFStringRef;
+    pub static kCTFontWeightTrait: ::CFStringRef;
 }

@@ -84,6 +84,11 @@ pub enum CFString {}
 pub type CFStringRef = *mut CFString;
 TollfreeBridge!(CFString = ::NSString);
 
+pub enum CFNumber {}
+/// A reference to a CFNumber object.
+pub type CFNumberRef = *mut CFNumber;
+TollfreeBridge!(CFNumber = ::NSNumber);
+
 #[link(name = "CoreFoundation", kind = "framework")] extern "system" {
     fn CFRetain(cf: CFTypeRef) -> CFTypeRef;
     fn CFRelease(cf: CFTypeRef);
