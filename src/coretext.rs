@@ -115,6 +115,23 @@ impl CTFont {
                 glyphs.as_ptr(), sink_ptr, glyphs.len() as _)
         }
     }
+    /// Calculates the bounding rects for an array of glyphs and
+    /// returns the overall bounding rectangle for the glyph run.
+    pub fn bounding_rects_for_glyphs(&self, orientation: CTFontOrientation, glyphs: &[::CGGlyph],
+        bounding_rects_per_glyph: Option<&mut [::CGRect]>) -> ::CGRect
+    {
+        let sink_ptr = bounding_rects_per_glyph.map_or_else(std::ptr::null_mut, |x|
+        {
+            assert_eq!(x.len(), glyphs.len(), "mismatching count of glyphs and bounding rects");
+            x.as_mut_ptr()
+        });
+
+        unsafe
+        {
+            CTFontGetBoundingRectsForGlyphs(self as *const _ as _, orientation, glyphs.as_ptr(),
+                sink_ptr, glyphs.len() as _)
+        }
+    }
 }
 
 /// An opaque type represnting a font descriptor.
@@ -287,6 +304,8 @@ impl CTRun {
     fn CTFontGetDescent(font: CTFontRef) -> ::CGFloat;
     fn CTFontGetAdvancesForGlyphs(font: CTFontRef, orientation: CTFontOrientation,
         glyphs: *const ::CGGlyph, advances: *mut ::CGSize, count: ::CFIndex) -> libc::c_double;
+    fn CTFontGetBoundingRectsForGlyphs(font: CTFontRef, orientation: CTFontOrientation,
+        glyphs: *const ::CGGlyph, bonding_rects: *mut ::CGRect, count: ::CFIndex) -> ::CGRect;
 
     // CTRun //
     fn CTRunGetGlyphCount(run: CTRunRef) -> ::CFIndex;
