@@ -47,9 +47,21 @@ impl CTFont {
         let font_ptr = unsafe { CTFontCopyGraphicsFont(self as *const _ as _, &mut attrs) };
         unsafe { ::CGFont::own_from(font_ptr).and_then(|f| CTFontDescriptor::own_from(attrs).map(move |d| (f, d))).ok_or(()) }
     }
+
+    /// Returns a new font reference that best matches the given font descriptor
+    pub fn from_font_descriptor(descriptor: &CTFontDescriptor, size: ::CGFloat, matrix: Option<&::CGAffineTransform>)
+        -> Result<ExternalRc<Self>, ()>
+    {
+        let matrix_ref = matrix.map_or_else(null, |p| p as _);
+        unsafe
+        {
+            Self::own_from(CTFontCreateWithFontDescriptor(descriptor as *const _ as _, size, matrix_ref)).ok_or(())
+        }
+    }
     
     /// Returns an array of languages supported by the font.
-    pub fn supported_languages(&self) -> Result<ExternalRc<::CFArray>, ()> {
+    pub fn supported_languages(&self) -> Result<ExternalRc<::CFArray>, ()>
+    {
         unsafe { ::CFArray::own_from(CTFontCopySupportedLanguages(self as *const _ as _)).ok_or(()) }
     }
     /// Provides basic Unicode encoding for the given font, returning by reference an array of `CGGlyph` values
@@ -85,9 +97,21 @@ impl CTFont {
 pub enum CTFontDescriptor {}
 /// A reference to a CTFontDescriptor object.
 pub type CTFontDescriptorRef = *mut CTFontDescriptor;
-impl ExternalRced for CTFontDescriptor {
-    unsafe fn own_from_unchecked(p: *mut Self) -> ExternalRc<Self> {
+impl ExternalRced for CTFontDescriptor
+{
+    unsafe fn own_from_unchecked(p: *mut Self) -> ExternalRc<Self>
+    {
         ExternalRc::with_fn(p, ::cfretain::<Self>, ::cfrelease::<Self>)
+    }
+}
+impl CTFontDescriptor
+{
+    pub fn with_attributes(attributes: &::CFDictionary) -> Result<ExternalRc<Self>, ()>
+    {
+        unsafe
+        {
+            Self::own_from(CTFontDescriptorCreateWithAttributes(attributes as *const _ as _)).ok_or(())
+        }
     }
 }
 
@@ -217,6 +241,8 @@ impl CTRun {
     fn CTFontCreateWithGraphicsFont(graphicsFont: ::CGFontRef, size: ::CGFloat, matrix: *const ::CGAffineTransform,
         attributes: CTFontDescriptorRef) -> CTFontRef;
     fn CTFontCopyGraphicsFont(font: CTFontRef, attributes: *mut CTFontDescriptorRef) -> ::CGFontRef;
+    fn CTFontCreateWithFontDescriptor(descriptor: CTFontDescriptorRef, size: ::CGFloat,
+        matrix: *const ::CGAffineTransform) -> CTFontRef;
     fn CTFontCopySupportedLanguages(font: CTFontRef) -> ::CFArrayRef;
     fn CTFontGetGlyphsForCharacters(font: CTFontRef, characters: *const ::UniChar, glyphs: *mut ::CGGlyph,
         count: ::CFIndex) -> bool;
@@ -243,6 +269,10 @@ impl CTRun {
     fn CTRunGetPositions(run: CTRunRef, range: ::CFRange, buffer: *mut ::CGPoint);
     fn CTRunGetPositionsPtr(run: CTRunRef) -> *const ::CGPoint;
     fn CTRunGetAttributes(run: CTRunRef) -> ::CFDictionaryRef;
+
+    // CTFontDescriptor //
+    fn CTFontDescriptorCreateWithAttributes(attributes: ::CFDictionaryRef) -> ::CTFontDescriptorRef;
+
 
     // Attributes //
     pub static kCTFontAttributeName: ::CFStringRef;
