@@ -98,6 +98,8 @@ impl CTFont {
     pub fn cap_height(&self) -> ::CGFloat { unsafe { CTFontGetCapHeight(self as *const _ as _) } }
     /// Returns the x-height metric of the font.
     pub fn x_height(&self) -> ::CGFloat { unsafe { CTFontGetXHeight(self as *const _ as _) } }
+    /// Returns the units-per-em metric of the given font.
+    pub fn units_per_em(&self) -> libc::c_uint { unsafe { CTFontGetUnitsPerEm(self as *const _ as _) } }
 
     /// Calculates the advances for an array of glyphs and returns the summed advance.
     pub fn advances_for_glyphs(&self, orientation: CTFontOrientation, glyphs: &[::CGGlyph],
@@ -306,6 +308,7 @@ impl CTRun {
         glyphs: *const ::CGGlyph, advances: *mut ::CGSize, count: ::CFIndex) -> libc::c_double;
     fn CTFontGetBoundingRectsForGlyphs(font: CTFontRef, orientation: CTFontOrientation,
         glyphs: *const ::CGGlyph, bonding_rects: *mut ::CGRect, count: ::CFIndex) -> ::CGRect;
+    fn CTFontGetUnitsPerEm(font: CTFontRef) -> libc::c_uint;
 
     // CTRun //
     fn CTRunGetGlyphCount(run: CTRunRef) -> ::CFIndex;
