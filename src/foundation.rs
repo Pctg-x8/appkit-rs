@@ -43,6 +43,15 @@ impl NSNumber {
             (p as *mut Self).as_ref().ok_or(())
         }
     }
+    /// Creates and returns an NSNumber object containing a given value, treating it as an `unsigned int`.
+    pub fn from_uint<'a>(v: c_uint) -> Result<&'a Self, ()>
+    {
+        unsafe
+        {
+            let p: *mut Object = msg_send![Class::get("NSNumber").unwrap(), numberWithUnsignedInt: v];
+            (p as *mut Self).as_ref().ok_or(())
+        }
+    }
 }
 
 /// A static collection of objects associated with unique keys.
