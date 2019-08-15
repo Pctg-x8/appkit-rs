@@ -17,6 +17,13 @@ pub enum CTFontSymbolicTraits
     ItalicTrait = 1 << 0,
     BoldTrait = 1 << 1
 }
+#[repr(u32)] #[derive(Debug, Clone, PartialEq, Eq, Copy)]
+pub enum CTFontOrientation
+{
+    Default = 0,
+    Horizontal,
+    Vertical
+}
 
 /// toll-free bridging
 impl AsRef<CTFont> for ::NSFont { fn as_ref(&self) -> &CTFont { unsafe { ::std::mem::transmute(self) } } }
@@ -91,6 +98,23 @@ impl CTFont {
     pub fn cap_height(&self) -> ::CGFloat { unsafe { CTFontGetCapHeight(self as *const _ as _) } }
     /// Returns the x-height metric of the font.
     pub fn x_height(&self) -> ::CGFloat { unsafe { CTFontGetXHeight(self as *const _ as _) } }
+
+    /// Calculates the advances for an array of glyphs and returns the summed advance.
+    pub fn advances_for_glyphs(&self, orientation: CTFontOrientation, glyphs: &[::CGGlyph],
+        advances_per_glyph: Option<&mut [::CGSize]>) -> libc::c_double
+    {
+        let sink_ptr = advances_per_glyph.map_or_else(std::ptr::null_mut, |x|
+        {
+            assert_eq!(x.len(), glyphs.len(), "mismatching count of glyphs and advances");
+            x.as_mut_ptr()
+        });
+
+        unsafe
+        {
+            CTFontGetAdvancesForGlyphs(self as *const _ as _, orientation,
+                glyphs.as_ptr(), sink_ptr, glyphs.len() as _)
+        }
+    }
 }
 
 /// An opaque type represnting a font descriptor.
@@ -261,6 +285,8 @@ impl CTRun {
     fn CTFontGetXHeight(font: CTFontRef) -> ::CGFloat;
     fn CTFontGetAscent(font: CTFontRef) -> ::CGFloat;
     fn CTFontGetDescent(font: CTFontRef) -> ::CGFloat;
+    fn CTFontGetAdvancesForGlyphs(font: CTFontRef, orientation: CTFontOrientation,
+        glyphs: *const ::CGGlyph, advances: *mut ::CGSize, count: ::CFIndex) -> libc::c_double;
 
     // CTRun //
     fn CTRunGetGlyphCount(run: CTRunRef) -> ::CFIndex;
