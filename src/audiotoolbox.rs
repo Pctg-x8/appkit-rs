@@ -1,3 +1,4 @@
+#![allow(non_upper_case_globals)]
 //! AudioToolbox
 
 use libc::c_void;
@@ -17,8 +18,15 @@ pub type AudioUnitScope = u32;
 /// The data type for an audio unit element identifier.
 pub type AudioUnitElement = u32;
 
+pub const kAudioUnitProperty_StreamFormat: AudioUnitPropertyID = 8;
+pub const kAudioUnitProperty_SetRenderCallback: AudioUnitPropertyID = 23;
+pub const kAudioUnitScope_Input: AudioUnitScope = 1;
+pub const kAudioUnitScope_Output: AudioUnitScope = 2;
+
 pub type AudioFormatID = u32;
 pub type AudioFormatFlags = u32;
+pub const kAudioFormatFlagIsFloat: AudioFormatFlags = 0x01;
+pub const kAudioFormatFlagIsNonInterleaved: AudioFormatFlags = 0x20;
 
 pub type SMPTETimeType = u32;
 pub type SMPTETimeFlags = u32;
@@ -87,6 +95,18 @@ pub struct AudioComponentDescription
     pub component_flags_mask: u32
 }
 
+macro_rules! BuildFourcc
+{
+    ($a: expr, $b: expr, $c: expr, $d: expr) =>
+        ($a as u32 | (($b as u32) << 8) | (($c as u32) << 16) | (($d as u32) << 24))
+}
+pub const kAudioUnitType_Output: super::OSType = BuildFourcc!(b'a', b'u', b'o', b'u');
+pub const kAudioUnitSubType_HALOutput: super::OSType = BuildFourcc!(b'a', b'h', b'a', b'l');
+pub const kAudioUnitSubType_DefaultOutput: super::OSType = BuildFourcc!(b'd', b'e', b'f', b' ');
+pub const kAudioUnitSubType_SystemOutput: super::OSType = BuildFourcc!(b's', b'y', b's', b' ');
+pub const kAudioUnitManufacturer_Apple: super::OSType = BuildFourcc!(b'a', b'p', b'p', b'l');
+pub const kAudioFormatLinearPCM: AudioFormatID = BuildFourcc!(b'l', b'p', b'c', b'm');
+
 #[repr(C)] #[derive(Debug, Clone)]
 pub struct AudioStreamBasicDescription
 {
@@ -101,9 +121,7 @@ pub struct AudioStreamBasicDescription
     pub _reserved: u32
 }
 
-// #[link(name="AudioToolbox", kind="framework")]
-// #[link(name="AudioUnit", kind="framework")]
-#[link(name="CoreAudio", kind="framework")]
+#[link(name="AudioUnit", kind="framework")]
 extern "system"
 {
     pub fn AudioComponentFindNext(in_component: AudioComponent, in_desc: *const AudioComponentDescription)
@@ -118,18 +136,4 @@ extern "system"
     pub fn AudioUnitUninitialize(in_unit: AudioUnit) -> super::OSStatus;
     pub fn AudioUnitSetProperty(in_unit: AudioUnit, in_id: AudioUnitPropertyID, in_scope: AudioUnitScope,
         in_element: AudioUnitElement, in_data: *const c_void, in_data_size: u32) -> super::OSStatus;
-    
-    pub static kAudioUnitType_Output: super::OSType;
-    pub static kAudioUnitSubType_HALOutput: super::OSType;
-    pub static kAudioUnitSubType_DefaultOutput: super::OSType;
-    pub static kAudioUnitSubType_SystemOutput: super::OSType;
-    pub static kAudioUnitManufacturer_Apple: super::OSType;
-    pub static kAudioUnitProperty_StreamFormat: AudioUnitPropertyID;
-    pub static kAudioUnitProperty_SetRenderCallback: AudioUnitPropertyID;
-    pub static kAudioUnitScope_Input: AudioUnitScope;
-    pub static kAudioUnitScope_Output: AudioUnitScope;
-
-    pub static kAudioFormatLinearPCM: AudioFormatID;
-    pub static kAudioFormatFlagIsFloat: AudioFormatFlags;
-    pub static kAudioFormatFlagIsNonInterleaved: AudioFormatFlags;
 }
