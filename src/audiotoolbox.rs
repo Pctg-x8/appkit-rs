@@ -104,7 +104,7 @@ pub struct AudioStreamBasicDescription
 #[link(name="AudioToolbox", kind="framework")]
 #[link(name="AudioUnit", kind="framework")]
 #[link(name="CoreAudio", kind="framework")]
-extern "C"
+extern "system"
 {
     pub fn AudioComponentFindNext(in_component: AudioComponent, in_desc: *const AudioComponentDescription)
         -> AudioComponent;
