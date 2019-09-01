@@ -50,6 +50,9 @@ macro_rules! TollfreeBridge {
     }
 }
 
+type OSType = u32;
+type OSStatus = i32;
+
 mod corefoundation; pub use corefoundation::*;
 mod foundation; pub use foundation::*;
 mod appkit; pub use appkit::*;
@@ -57,6 +60,7 @@ mod coregraphics; pub use coregraphics::*;
 mod corevideo; pub use corevideo::*;
 mod coreanimation; pub use coreanimation::*;
 mod coretext; pub use coretext::*;
+mod audiotoolbox; pub use audiotoolbox::*;
 
 use std::borrow::{Cow, Borrow, BorrowMut, ToOwned};
 use std::ops::{Deref, DerefMut};
