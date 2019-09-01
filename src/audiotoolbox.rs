@@ -70,6 +70,12 @@ pub type AURenderCallback = extern "C" fn(in_ref_con: *mut c_void,
     in_bus_number: u32,
     in_number_frames: u32,
     io_data: *mut AudioBufferList) -> super::OSStatus;
+#[repr(C)] #[derive(Debug)]
+pub struct AURenderCallbackStruct
+{
+    pub input_proc: AURenderCallback,
+    pub input_proc_ref_con: *mut c_void
+}
 
 #[repr(C)] #[derive(Debug, Clone)]
 pub struct AudioComponentDescription

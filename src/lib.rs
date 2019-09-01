@@ -50,8 +50,8 @@ macro_rules! TollfreeBridge {
     }
 }
 
-type OSType = u32;
-type OSStatus = i32;
+pub type OSType = u32;
+pub type OSStatus = i32;
 
 mod corefoundation; pub use corefoundation::*;
 mod foundation; pub use foundation::*;
