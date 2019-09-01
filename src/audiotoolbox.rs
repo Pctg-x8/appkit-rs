@@ -98,7 +98,7 @@ pub struct AudioComponentDescription
 macro_rules! BuildFourcc
 {
     ($a: expr, $b: expr, $c: expr, $d: expr) =>
-        ($a as u32 | (($b as u32) << 8) | (($c as u32) << 16) | (($d as u32) << 24))
+        ($d as u32 | (($c as u32) << 8) | (($b as u32) << 16) | (($a as u32) << 24))
 }
 pub const kAudioUnitType_Output: super::OSType = BuildFourcc!(b'a', b'u', b'o', b'u');
 pub const kAudioUnitSubType_HALOutput: super::OSType = BuildFourcc!(b'a', b'h', b'a', b'l');
