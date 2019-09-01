@@ -101,6 +101,7 @@ pub struct AudioStreamBasicDescription
     pub _reserved: u32
 }
 
+#[link(name="AudioToolbox", kind="framework")]
 extern "C"
 {
     pub fn AudioComponentFindNext(in_component: AudioComponent, in_desc: *const AudioComponentDescription)
