@@ -101,8 +101,8 @@ pub struct AudioStreamBasicDescription
     pub _reserved: u32
 }
 
-#[link(name="AudioToolbox", kind="framework")]
-#[link(name="AudioUnit", kind="framework")]
+// #[link(name="AudioToolbox", kind="framework")]
+// #[link(name="AudioUnit", kind="framework")]
 #[link(name="CoreAudio", kind="framework")]
 extern "system"
 {
