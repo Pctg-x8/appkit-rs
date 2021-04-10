@@ -1,25 +1,35 @@
 //! Foundation APIs
 
-use objc::runtime::*;
-use {CocoaObject, ObjcObjectBase, NSObject};
-use std::os::raw::*;
-use std::ffi::CStr;
-use std::os::raw::c_void;
-use std::marker::PhantomData;
-use std::ptr::null;
 use appkit_derive::ObjcObjectBase;
+use objc::runtime::*;
+use std::ffi::CStr;
+use std::marker::PhantomData;
+use std::os::raw::c_void;
+use std::os::raw::*;
+use std::ptr::null;
+use {CocoaObject, NSObject, ObjcObjectBase};
 
 /// A static, plain-text Unicode string object.
-#[derive(ObjcObjectBase)] #[repr(C)]
-pub struct NSString(Object); DeclareClassDerivative!(NSString : NSObject);
+#[derive(ObjcObjectBase)]
+#[repr(C)]
+pub struct NSString(Object);
+DeclareClassDerivative!(NSString: NSObject);
 impl NSString {
     fn alloc() -> Result<*mut Object, ()> {
         let p: *mut Object = unsafe { msg_send![Class::get("NSString").unwrap(), alloc] };
-        if p.is_null() { Err(()) } else { Ok(p) }
+        if p.is_null() {
+            Err(())
+        } else {
+            Ok(p)
+        }
     }
     pub fn empty() -> &'static Self {
         let p: *mut Object = unsafe { msg_send![Class::get("NSString").unwrap(), string] };
-        return unsafe { (p as *const Self).as_ref().expect("Nil returned from [NSString string]") };
+        return unsafe {
+            (p as *const Self)
+                .as_ref()
+                .expect("Nil returned from [NSString string]")
+        };
     }
     pub fn from_str(s: &str) -> Result<CocoaObject<Self>, ()> {
         let bytes = s.as_bytes();
@@ -28,13 +38,20 @@ impl NSString {
                 initWithBytes: bytes.as_ptr() as *const c_void length: bytes.len() encoding: 4 as ::NSUInteger])
         }
     }
-    pub fn to_str(&self) -> &str { unsafe { CStr::from_ptr(msg_send![&self.0, UTF8String]).to_str().unwrap() } }
+    pub fn to_str(&self) -> &str {
+        unsafe { CStr::from_ptr(msg_send![&self.0, UTF8String]).to_str().unwrap() }
+    }
 }
 
 /// An object wrapper for primitive scalar numeric values.
-#[derive(ObjcObjectBase)] #[repr(C)]
-pub struct NSNumber(Object); DeclareClassDerivative!(NSNumber : NSValue);
-#[derive(ObjcObjectBase)] #[repr(C)] pub struct NSValue(Object); DeclareClassDerivative!(NSValue : NSObject);
+#[derive(ObjcObjectBase)]
+#[repr(C)]
+pub struct NSNumber(Object);
+DeclareClassDerivative!(NSNumber: NSValue);
+#[derive(ObjcObjectBase)]
+#[repr(C)]
+pub struct NSValue(Object);
+DeclareClassDerivative!(NSValue: NSObject);
 impl NSNumber {
     /// Creates and returns an NSNumber object containing a given value, treating it as a `float`.
     pub fn from_float<'a>(v: c_float) -> Result<&'a Self, ()> {
@@ -44,10 +61,8 @@ impl NSNumber {
         }
     }
     /// Creates and returns an NSNumber object containing a given value, treating it as an `unsigned int`.
-    pub fn from_uint<'a>(v: c_uint) -> Result<&'a Self, ()>
-    {
-        unsafe
-        {
+    pub fn from_uint<'a>(v: c_uint) -> Result<&'a Self, ()> {
+        unsafe {
             let p: *mut Object = msg_send![Class::get("NSNumber").unwrap(), numberWithUnsignedInt: v];
             (p as *mut Self).as_ref().ok_or(())
         }
@@ -55,14 +70,20 @@ impl NSNumber {
 }
 
 /// A static collection of objects associated with unique keys.
-#[derive(ObjcObjectBase)] #[repr(C)]
-pub struct NSDictionary<KeyType: ObjcObjectBase, ObjectType: ObjcObjectBase>
-    (Object, PhantomData<(*mut KeyType, *mut ObjectType)>);
+#[derive(ObjcObjectBase)]
+#[repr(C)]
+pub struct NSDictionary<KeyType: ObjcObjectBase, ObjectType: ObjcObjectBase>(
+    Object,
+    PhantomData<(*mut KeyType, *mut ObjectType)>,
+);
 DeclareClassDerivative!(NSDictionary<K: NSCopying, O: ObjcObjectBase> : NSObject);
 /// A dynamic collection of objects associated with unique keys.
-#[derive(ObjcObjectBase)] #[repr(C)]
-pub struct NSMutableDictionary<KeyType: NSCopying, ObjectType: ObjcObjectBase>
-    (Object, PhantomData<(*mut KeyType, *mut ObjectType)>);
+#[derive(ObjcObjectBase)]
+#[repr(C)]
+pub struct NSMutableDictionary<KeyType: NSCopying, ObjectType: ObjcObjectBase>(
+    Object,
+    PhantomData<(*mut KeyType, *mut ObjectType)>,
+);
 DeclareClassDerivative!(NSMutableDictionary<K: NSCopying, O: ObjcObjectBase> : NSDictionary<K, O>);
 impl<KeyType: NSCopying, ObjectType: ObjcObjectBase> NSMutableDictionary<KeyType, ObjectType> {
     /// Creates and returns a mutable dictionary, initially giving it enough allocated memory to
@@ -89,11 +110,15 @@ impl<KeyType: NSCopying, ObjectType: ObjcObjectBase> NSMutableDictionary<KeyType
         let _: () = unsafe { msg_send![self.objid_mut(), removeObjectForKey: key.objid()] };
     }
     /// Empties the dictionary of its entries.
-    pub fn clear(&mut self) { let _: () = unsafe { msg_send![self.objid_mut(), removeAllObjects] }; }
+    pub fn clear(&mut self) {
+        let _: () = unsafe { msg_send![self.objid_mut(), removeAllObjects] };
+    }
 }
 impl<KeyType: ObjcObjectBase, ObjectType: ObjcObjectBase> NSDictionary<KeyType, ObjectType> {
     /// The number of entries in the dictionary.
-    pub fn len(&self) -> ::NSUInteger { unsafe { msg_send![self.objid(), count] } }
+    pub fn len(&self) -> ::NSUInteger {
+        unsafe { msg_send![self.objid(), count] }
+    }
     /// Returns the value associated with a given key.
     pub fn get(&self, keytype: &KeyType) -> &ObjectType {
         let p: *mut Object = unsafe { msg_send![self.objid(), objectForKey: keytype.objid()] };
@@ -102,10 +127,13 @@ impl<KeyType: ObjcObjectBase, ObjectType: ObjcObjectBase> NSDictionary<KeyType, 
 }
 
 /// A static ordered collection of objects.
-#[derive(ObjcObjectBase)] #[repr(C)] pub struct NSArray<ObjectType: ObjcObjectBase>(Object, PhantomData<*mut ObjectType>);
+#[derive(ObjcObjectBase)]
+#[repr(C)]
+pub struct NSArray<ObjectType: ObjcObjectBase>(Object, PhantomData<*mut ObjectType>);
 DeclareClassDerivative!(NSArray<O: ObjcObjectBase> : NSObject);
 /// A dynamic ordered collection of objects.
-#[derive(ObjcObjectBase)] #[repr(C)]
+#[derive(ObjcObjectBase)]
+#[repr(C)]
 pub struct NSMutableArray<ObjectType: ObjcObjectBase>(Object, PhantomData<*mut ObjectType>);
 DeclareClassDerivative!(NSMutableArray<ObjectType: ObjcObjectBase> : NSArray<ObjectType>);
 impl<ObjectType: ObjcObjectBase> NSMutableArray<ObjectType> {
@@ -133,11 +161,15 @@ impl<ObjectType: ObjcObjectBase> NSMutableArray<ObjectType> {
         let _: () = unsafe { msg_send![self.objid_mut(), insertObject: object.objid() atIndex: index] };
     }
     /// Empties the array of all its elements.
-    pub fn clear(&mut self) { let _: () = unsafe { msg_send![self.objid_mut(), removeAllObjects] }; }
+    pub fn clear(&mut self) {
+        let _: () = unsafe { msg_send![self.objid_mut(), removeAllObjects] };
+    }
 }
 impl<ObjectType: ObjcObjectBase> NSArray<ObjectType> {
     /// The number of objects in the array.
-    pub fn len(&self) -> ::NSUInteger { unsafe { msg_send![self.objid(), count] } }
+    pub fn len(&self) -> ::NSUInteger {
+        unsafe { msg_send![self.objid(), count] }
+    }
     /// Returns the object located at the specified index.
     pub fn get(&self, index: ::NSUInteger) -> &ObjectType {
         let p: *mut Object = unsafe { msg_send![self.objid(), objectAtIndex: index] };
@@ -146,8 +178,10 @@ impl<ObjectType: ObjcObjectBase> NSArray<ObjectType> {
 }
 
 /// A representation of the code and resources stored in a bundle directory on disk.
-#[derive(ObjcObjectBase)] #[repr(C)]
-pub struct NSBundle(Object); DeclareClassDerivative!(NSBundle : NSObject);
+#[derive(ObjcObjectBase)]
+#[repr(C)]
+pub struct NSBundle(Object);
+DeclareClassDerivative!(NSBundle: NSObject);
 impl NSBundle {
     /// Returns the bundle object that contains the current executable.
     pub fn main() -> Result<&'static Self, ()> {
@@ -165,8 +199,10 @@ impl NSBundle {
 }
 
 /// A collection of information about the current process.
-#[derive(ObjcObjectBase)] #[repr(C)]
-pub struct NSProcessInfo(Object); DeclareClassDerivative!(NSProcessInfo : NSObject);
+#[derive(ObjcObjectBase)]
+#[repr(C)]
+pub struct NSProcessInfo(Object);
+DeclareClassDerivative!(NSProcessInfo: NSObject);
 impl NSProcessInfo {
     /// Returns the process information agent for the process.
     pub fn current() -> Result<&'static Self, ()> {
@@ -175,31 +211,45 @@ impl NSProcessInfo {
     }
     /// The name of the process.
     pub fn name(&self) -> &::NSString {
-        unsafe { let p: *mut Object = msg_send![self.objid(), processName]; &*(p as *const ::NSString) }
+        unsafe {
+            let p: *mut Object = msg_send![self.objid(), processName];
+            &*(p as *const ::NSString)
+        }
     }
 }
 
 pub type NSAttributedStringKey = NSString;
 /// A string that has associated attributes for portions of its text.
-#[derive(ObjcObjectBase)] pub struct NSAttributedString(Object); DeclareClassDerivative!(NSAttributedString : NSObject);
+#[derive(ObjcObjectBase)]
+pub struct NSAttributedString(Object);
+DeclareClassDerivative!(NSAttributedString: NSObject);
 unsafe impl NSCopying for NSAttributedString {}
 impl NSAttributedString {
     fn alloc() -> Result<*mut Object, ()> {
         let p: *mut Object = unsafe { msg_send![Class::get("NSAttributedString").unwrap(), alloc] };
-        if p.is_null() { Err(()) } else { Ok(p) }
+        if p.is_null() {
+            Err(())
+        } else {
+            Ok(p)
+        }
     }
-    pub fn new(s: &NSString, attrs: Option<&NSDictionary<NSAttributedStringKey, Object>>)
-            -> Result<CocoaObject<Self>, ()> {
+    pub fn new(
+        s: &NSString,
+        attrs: Option<&NSDictionary<NSAttributedStringKey, Object>>,
+    ) -> Result<CocoaObject<Self>, ()> {
         let p: *mut Object = unsafe {
-            if let Some(a) = attrs { msg_send![Self::alloc()?, initWithString: s.objid() attributes: a.objid()] }
-            else { msg_send![Self::alloc()?, initWithString: s.objid()] }
+            if let Some(a) = attrs {
+                msg_send![Self::alloc()?, initWithString: s.objid() attributes: a.objid()]
+            } else {
+                msg_send![Self::alloc()?, initWithString: s.objid()]
+            }
         };
         unsafe { CocoaObject::from_id(p) }
     }
 }
 
 /// A protocol that objects adopt to provide functional copies of themselves.
-pub unsafe trait NSCopying : ObjcObjectBase + Sized {
+pub unsafe trait NSCopying: ObjcObjectBase + Sized {
     /// Returns a new instance that's a copy of the receiver.
     /// This method will call `copyWithZone` with nil.
     fn copy(&self) -> Result<CocoaObject<Self>, ()> {

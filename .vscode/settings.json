@@ -1,3 +1,4 @@
 {
+    "editor.formatOnSave": true
     // "rust.features": ["objc/verify_message"]
 }
