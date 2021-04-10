@@ -156,6 +156,12 @@ impl CTFontDescriptor
             Self::own_from(CTFontDescriptorCreateWithAttributes(attributes as *const _ as _)).ok_or(())
         }
     }
+
+    pub fn from_data(d: &::CFData) -> Option<ExternalRc<Self>> {
+        unsafe {
+            Self::own_from(CTFontManagerCreateFontDescritorFromData(d as *const _ as _))
+        }
+    }
 }
 
 /// An opaque type that is used to generate text frames.
@@ -173,15 +179,17 @@ impl CTFramesetter {
         unsafe { Self::own_from(CTFramesetterCreateWithAttributedString(string.as_ref() as *const _ as _)).ok_or(()) }
     }
     /// Determines the frame size needed for a string range.
-    pub fn suggest_frame_size_with_constraints<R: Into<::CFRange>>(&self, str_range: R, attrs: Option<&::CFDictionary>,
-            constraints: ::CGSize) -> (::CGSize, ::CFRange) {
-        let mut fit_range = unsafe { ::std::mem::uninitialized() };
+    pub fn suggest_frame_size_with_constraints<R: Into<::CFRange>>(
+        &self, str_range: R, attrs: Option<&::CFDictionary>,
+        constraints: ::CGSize
+    ) -> (::CGSize, ::CFRange) {
+        let mut fit_range = std::mem::MaybeUninit::uninit();
         let frame_attrs = attrs.map_or(null_mut(), |p| p as *const _ as _);
         let size = unsafe {
             CTFramesetterSuggestFrameSizeWithConstraints(self as *const _ as _, str_range.into(), frame_attrs,
-                constraints, &mut fit_range)
+                constraints, fit_range.as_mut_ptr())
         };
-        return (size, fit_range);
+        return (size, unsafe { fit_range.assume_init() });
     }
 }
 
@@ -321,6 +329,8 @@ impl CTRun {
     // CTFontDescriptor //
     fn CTFontDescriptorCreateWithAttributes(attributes: ::CFDictionaryRef) -> ::CTFontDescriptorRef;
 
+    // CTFontManager //
+    fn CTFontManagerCreateFontDescritorFromData(data: ::CFDataRef) -> ::CTFontDescriptorRef;
 
     // Attributes //
     pub static kCTFontAttributeName: ::CFStringRef;

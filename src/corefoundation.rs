@@ -89,10 +89,29 @@ pub enum CFNumber {}
 pub type CFNumberRef = *mut CFNumber;
 TollfreeBridge!(CFNumber = ::NSNumber);
 
+pub enum CFData {}
+/// A reference to a CFData object.
+pub type CFDataRef = *mut CFData;
+impl ExternalRced for CFData {
+    unsafe fn own_from_unchecked(r: *mut Self) -> ExternalRc<Self> {
+        ExternalRc::with_fn(r, cfretain::<Self>, cfrelease::<Self>)
+    }
+}
+impl CFData {
+    pub fn new(v: &[u8]) -> Option<ExternalRc<Self>> {
+        unsafe { Self::own_from(CFDataCreate(std::ptr::null_mut(), v.as_ptr(), v.len() as _)) }
+    }
+}
+
+pub enum CFAllocator {}
+/// A reference to a CFAllocator object.
+pub type CFAllocatorRef = *mut CFAllocator;
+
 #[link(name = "CoreFoundation", kind = "framework")] extern "system" {
     fn CFRetain(cf: CFTypeRef) -> CFTypeRef;
     fn CFRelease(cf: CFTypeRef);
     fn CFArrayGetCount(array: CFArrayRef) -> CFIndex;
     fn CFArrayGetValueAtIndex(array: CFArrayRef, idx: CFIndex) -> *const c_void;
     fn CFDictionaryGetValue(dict: CFDictionaryRef, key: *const c_void) -> *const c_void;
+    fn CFDataCreate(allocator: CFAllocatorRef, bytes: *const u8, length: CFIndex) -> CFDataRef;
 }
