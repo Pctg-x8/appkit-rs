@@ -213,7 +213,7 @@ impl CTFontDescriptor {
     }
 
     pub fn from_data(d: &::CFData) -> Option<ExternalRc<Self>> {
-        unsafe { Self::own_from(CTFontManagerCreateFontDescritorFromData(d as *const _ as _)) }
+        unsafe { Self::own_from(CTFontManagerCreateFontDescriptorFromData(d as *const _ as _)) }
     }
 }
 
@@ -455,7 +455,7 @@ extern "system" {
     fn CTFontDescriptorCreateWithAttributes(attributes: ::CFDictionaryRef) -> ::CTFontDescriptorRef;
 
     // CTFontManager //
-    fn CTFontManagerCreateFontDescritorFromData(data: ::CFDataRef) -> ::CTFontDescriptorRef;
+    fn CTFontManagerCreateFontDescriptorFromData(data: ::CFDataRef) -> ::CTFontDescriptorRef;
 
     // Attributes //
     pub static kCTFontAttributeName: ::CFStringRef;
