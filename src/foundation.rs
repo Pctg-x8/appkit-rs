@@ -7,6 +7,8 @@ use std::marker::PhantomData;
 use std::os::raw::c_void;
 use std::os::raw::*;
 use std::ptr::null;
+
+use crate::NSInteger;
 use {CocoaObject, NSObject, ObjcObjectBase};
 
 /// A static, plain-text Unicode string object.
@@ -245,6 +247,38 @@ impl NSAttributedString {
             }
         };
         unsafe { CocoaObject::from_id(p) }
+    }
+}
+
+pub type NSErrorDomain = NSString;
+pub type NSErrorUserInfoKey = NSString;
+
+#[derive(ObjcObjectBase)]
+pub struct NSError(Object);
+DeclareClassDerivative!(NSError: NSObject);
+unsafe impl NSCopying for NSError {}
+impl NSError {
+    pub fn code(&self) -> NSInteger {
+        unsafe { msg_send![self.objid(), code] }
+    }
+    pub fn domain(&self) -> Result<CocoaObject<NSErrorDomain>, ()> {
+        unsafe { CocoaObject::from_id(msg_send![self.objid(), domain]) }
+    }
+    pub fn userinfo(&self) -> Result<CocoaObject<NSDictionary<NSErrorUserInfoKey, Object>>, ()> {
+        unsafe { CocoaObject::from_id(msg_send![self.objid(), userinfo]) }
+    }
+
+    pub fn localized_description(&self) -> Result<CocoaObject<NSString>, ()> {
+        unsafe { CocoaObject::from_id(msg_send![self.objid(), localizedDescription]) }
+    }
+    pub fn localized_recovery_options(&self) -> Option<CocoaObject<NSArray<NSString>>> {
+        unsafe { CocoaObject::from_id(msg_send![self.objid(), localizedRecoveryOptions]).ok() }
+    }
+    pub fn localized_recovery_suggestion(&self) -> Option<CocoaObject<NSString>> {
+        unsafe { CocoaObject::from_id(msg_send![self.objid(), localizedRecoverySuggestion]).ok() }
+    }
+    pub fn localized_failure_reason(&self) -> Option<CocoaObject<NSString>> {
+        unsafe { CocoaObject::from_id(msg_send![self.objid(), localizedFailureReason]).ok() }
     }
 }
 
