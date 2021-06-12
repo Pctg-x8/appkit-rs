@@ -265,3 +265,18 @@ impl CocoaString for String {
 }
 
 pub type UniChar = u16;
+
+#[repr(C)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct NSRange {
+    pub location: NSUInteger,
+    pub length: NSUInteger,
+}
+impl From<std::ops::Range<NSUInteger>> for NSRange {
+    fn from(r: std::ops::Range<NSUInteger>) -> Self {
+        NSRange {
+            location: r.start,
+            length: r.end - r.start,
+        }
+    }
+}
