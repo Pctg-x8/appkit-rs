@@ -8,6 +8,7 @@ extern crate bitflags;
 #[macro_use]
 extern crate appkit_derive;
 
+#[macro_export]
 macro_rules! DeclareClassDerivative {
     ($t: ident < $($gid: ident: $cons: path),* > : $o: ty) => {
         impl<$($gid: $cons),*> ::std::ops::Deref for $t<$($gid),*> {
