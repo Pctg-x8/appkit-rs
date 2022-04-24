@@ -27,12 +27,29 @@ impl CALayer {
         unsafe { msg_send![self.objid_mut(), setBounds: rect] }
     }
 }
+
 /// A layer that manages a pool of Metal drawables.
 #[derive(ObjcObjectBase)]
 pub struct CAMetalLayer(Object);
 DeclareClassDerivative!(CAMetalLayer: CALayer);
 impl CAMetalLayer {
     pub fn layer() -> Result<CocoaObject<Self>, ()> {
-        unsafe { CocoaObject::from_id(msg_send![Class::get("CAMetalLayer").unwrap(), layer]) }
+        unsafe { CocoaObject::from_id(msg_send![class!(CAMetalLayer), layer]) }
+    }
+
+    pub fn next_drawable(&mut self) -> Result<CocoaObject<CAMetalDrawable>, ()> {
+        unsafe { CocoaObject::from_id(msg_send![self.objid_mut(), nextDrawable]) }
+    }
+}
+
+/// A Metal drawable associated with a Core Animation layer.
+#[derive(ObjcObjectBase)]
+pub struct CAMetalDrawable(Object);
+// 本当はMTLDrawable
+DeclareClassDerivative!(CAMetalDrawable: NSObject);
+impl CAMetalDrawable {
+    /// 本当はMTLTexture
+    pub fn texture(&self) -> *const Object {
+        unsafe { msg_send![self.objid(), texture] }
     }
 }
