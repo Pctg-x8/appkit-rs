@@ -1,9 +1,12 @@
 //! AppKit bindings
 
+use crate::{
+    CALayer, CGColor, CGColorRef, CGFloat, CGRect, CGSize, CocoaObject, CocoaString, NSInteger, NSObject, NSString,
+    NSUInteger, ObjcObjectBase,
+};
 use appkit_derive::ObjcObjectBase;
 use objc::runtime::*;
 use std::mem::zeroed;
-use {CocoaObject, CocoaString, NSObject, ObjcObjectBase};
 
 /*#[cfg(feature = "with_ferrite")]
 type NSRunLoopMode = *mut Object;*/
@@ -12,7 +15,7 @@ type NSRunLoopMode = *mut Object;*/
 pub type CVOptionFlags = u64;
 #[link(name = "AppKit", kind = "framework")]
 extern "system" {
-    pub static NSFontAttributeName: *mut ::NSString;
+    pub static NSFontAttributeName: *mut NSString;
 }
 /*#[cfg(feature = "with_ferrite")]
 #[link(name = "Foundation", kind = "framework")] extern "system"
@@ -20,8 +23,8 @@ extern "system" {
     pub static NSDefaultRunLoopMode: NSRunLoopMode;
 }*/
 
-pub type NSSize = ::CGSize;
-pub type NSRect = ::CGRect;
+pub type NSSize = CGSize;
+pub type NSRect = CGRect;
 
 #[repr(C)]
 #[allow(dead_code)]
@@ -31,7 +34,7 @@ pub enum NSApplicationActivationPolicy {
     Prohibited,
 }
 bitflags! {
-    pub struct NSWindowStyleMask: ::NSUInteger {
+    pub struct NSWindowStyleMask: NSUInteger {
         const BORDERLESS = 0;
         const TITLED = 1 << 0;
         const CLOSABLE = 1 << 1;
@@ -53,7 +56,7 @@ bitflags! {
     }
 }
 bitflags! {
-    pub struct NSEventModifierFlags : ::NSUInteger {
+    pub struct NSEventModifierFlags : NSUInteger {
         const COMMAND = 1 << 20;
         const OPTION = 1 << 19;
         const SHIFT = 1 << 17;
@@ -65,23 +68,27 @@ pub struct NSApplication(Object);
 DeclareClassDerivative!(NSApplication: NSObject);
 impl NSApplication {
     pub fn shared() -> Option<&'static Self> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSApplication").unwrap(), sharedApplication] };
+        let p: *mut Object = unsafe { msg_send![class!(NSApplication), sharedApplication] };
         unsafe { (p as *const Self).as_ref() }
     }
 
     pub fn set_activation_policy(&self, policy: NSApplicationActivationPolicy) -> bool {
-        let b: BOOL = unsafe { msg_send![&self.0, setActivationPolicy: policy as ::NSInteger] };
+        let b: BOOL = unsafe { msg_send![&self.0, setActivationPolicy: policy as NSInteger] };
         b == YES
     }
+
     pub fn run(&self) {
         unsafe { msg_send![&self.0, run] }
     }
+
     pub fn activate_ignoring_other_apps(&self) {
         unsafe { msg_send![&self.0, activateIgnoringOtherApps: YES] }
     }
+
     pub fn set_delegate(&self, delegate: &Object) {
         unsafe { msg_send![&self.0, setDelegate: delegate] }
     }
+
     pub fn set_main_menu(&self, menu: &NSMenu) {
         let _: () = unsafe { msg_send![&self.0, setMainMenu: &menu.0] };
     }
@@ -91,41 +98,45 @@ pub struct NSWindow(Object);
 DeclareClassDerivative!(NSWindow: NSObject);
 impl NSWindow {
     fn alloc() -> Result<*mut Object, ()> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSWindow").unwrap(), alloc] };
+        let p: *mut Object = unsafe { msg_send![class!(NSWindow), alloc] };
         if p.is_null() {
             Err(())
         } else {
             Ok(p)
         }
     }
+
     pub fn new(content_rect: NSRect, style_mask: NSWindowStyleMask) -> Result<CocoaObject<Self>, ()> {
         unsafe {
             CocoaObject::from_id(msg_send![Self::alloc()?,
                 initWithContentRect: content_rect styleMask: style_mask.bits() backing: 2 defer: YES])
         }
     }
+
     pub unsafe fn with_view_controller_ptr(vc: *mut Object) -> Result<CocoaObject<Self>, ()> {
-        CocoaObject::from_id(msg_send![
-            Class::get("NSWindow").unwrap(),
-            windowWithContentViewController: vc
-        ])
+        CocoaObject::from_id(msg_send![class!(NSWindow), windowWithContentViewController: vc])
     }
 
     pub fn center(&self) {
         unsafe { msg_send![&self.0, center] }
     }
+
     pub fn make_key_and_order_front(&self, sender: &Object) {
         unsafe { msg_send![&self.0, makeKeyAndOrderFront: sender] }
     }
+
     pub fn set_title<Title: CocoaString + ?Sized>(&self, title: &Title) {
         unsafe { msg_send![&self.0, setTitle: title.to_nsstring().id()] }
     }
-    pub fn set_alpha_value(&self, a: ::CGFloat) {
+
+    pub fn set_alpha_value(&self, a: CGFloat) {
         unsafe { msg_send![&self.0, setAlphaValue: a] }
     }
+
     pub fn set_background_color(&self, bg: &NSColor) {
         let _: () = unsafe { msg_send![&self.0, setBackgroundColor: &bg.0] };
     }
+
     pub fn set_opaque(&self, op: bool) {
         unsafe { msg_send![&self.0, setOpaque: if op { YES } else { NO }] }
     }
@@ -148,13 +159,13 @@ impl NSMenu {
         &mut self,
         title: &T,
         action: Option<Sel>,
-        key_equivalent: Option<&::NSString>,
+        key_equivalent: Option<&NSString>,
     ) -> Result<&mut NSMenuItem, ()>
     where
         T: CocoaString + ?Sized,
     {
         let (title, action) = (title.to_nsstring(), action.unwrap_or(unsafe { zeroed() }));
-        let k = key_equivalent.unwrap_or_else(|| ::NSString::empty());
+        let k = key_equivalent.unwrap_or_else(|| NSString::empty());
 
         let item: *mut Object = unsafe {
             msg_send![&self.0, addItemWithTitle: title.id() action: action keyEquivalent: &k as *const _ as *const Object]
@@ -169,29 +180,31 @@ pub struct NSMenuItem(Object);
 DeclareClassDerivative!(NSMenuItem: NSObject);
 impl NSMenuItem {
     fn alloc() -> Result<*mut Object, ()> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSMenuItem").unwrap(), alloc] };
+        let p: *mut Object = unsafe { msg_send![class!(NSMenuItem), alloc] };
         if p.is_null() {
             Err(())
         } else {
             Ok(p)
         }
     }
+
     /// Returns an initialized instance of `NSMenuItem`.
-    pub fn new<Title: CocoaString + ?Sized>(
-        title: &Title,
+    pub fn new(
+        title: &(impl CocoaString + ?Sized),
         action: Option<Sel>,
-        key_equivalent: Option<&::NSString>,
+        key_equivalent: Option<&NSString>,
     ) -> Result<CocoaObject<Self>, ()> {
         let (title, action) = (title.to_nsstring(), action.unwrap_or(unsafe { zeroed() }));
-        let k = key_equivalent.unwrap_or_else(|| ::NSString::empty());
+        let k = key_equivalent.unwrap_or_else(|| NSString::empty());
         unsafe {
             CocoaObject::from_id(msg_send![Self::alloc()?,
                 initWithTitle: title.id() action: action keyEquivalent: k.objid()])
         }
     }
+
     /// Returns a menu item that is used to separate logical groups of menu commands.
     pub fn separator() -> Result<CocoaObject<Self>, ()> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSMenuItem").unwrap(), separatorItem] };
+        let p: *mut Object = unsafe { msg_send![class!(NSMenuItem), separatorItem] };
         if p.is_null() {
             return Err(());
         }
@@ -203,25 +216,30 @@ impl NSMenuItem {
         let _: () = unsafe { msg_send![&self.0, setSubmenu: &sub.0] };
         return self;
     }
+
     /// Sets the menu item's target.
     pub fn set_target(&self, target: *mut Object) -> &Self {
         let _: () = unsafe { msg_send![&self.0, setTarget: target] };
         return self;
     }
+
     /// Sets the menu item's unmodified key equivalent.
     pub fn set_key_equivalent_modifier_mask(&self, mods: NSEventModifierFlags) -> &Self {
         let _: () = unsafe { msg_send![&self.0, setKeyEquivalentModifierMask: mods.bits] };
         return self;
     }
+
     /// Sets the menu item's keyboard equivalent modifiers.
-    pub fn set_key_equivalent<Str: CocoaString + ?Sized>(&self, k: &Str) -> &Self {
+    pub fn set_key_equivalent(&self, k: &(impl CocoaString + ?Sized)) -> &Self {
         let _: () = unsafe { msg_send![&self.0, setKeyEquivalent: k.to_nsstring().id()] };
         return self;
     }
+
     /// Sets the menu item's key equivalents with modifiers.
-    pub fn set_accelerator<Str: CocoaString + ?Sized>(&self, mods: NSEventModifierFlags, key: &Str) -> &Self {
+    pub fn set_accelerator(&self, mods: NSEventModifierFlags, key: &(impl CocoaString + ?Sized)) -> &Self {
         self.set_key_equivalent(key).set_key_equivalent_modifier_mask(mods)
     }
+
     /// Sets the menu item's action-method selector.
     pub fn set_action(&self, sel: Sel) -> &Self {
         let _: () = unsafe { msg_send![&self.0, setAction: sel] };
@@ -235,47 +253,57 @@ pub struct NSView(Object);
 DeclareClassDerivative!(NSView: NSObject);
 impl NSView {
     /// The Core Animation layer that the view uses as its backing store.
-    pub fn layer(&self) -> Option<&::CALayer> {
+    pub fn layer(&self) -> Option<&CALayer> {
         let p: *mut Object = unsafe { msg_send![self.objid(), layer] };
-        unsafe { (p as *const ::CALayer).as_ref() }
+        unsafe { (p as *const CALayer).as_ref() }
     }
+
     /// The Core Animation layer that the view uses as its backing store.
-    pub fn layer_mut(&mut self) -> Option<&mut ::CALayer> {
+    pub fn layer_mut(&mut self) -> Option<&mut CALayer> {
         let p: *mut Object = unsafe { msg_send![self.objid_mut(), layer] };
-        unsafe { (p as *mut ::CALayer).as_mut() }
+        unsafe { (p as *mut CALayer).as_mut() }
     }
+
     /// Sets the Core Animation layer that the view uses as its backing store.
     pub fn set_layer(&mut self, layer: *mut Object) {
         unsafe { msg_send![self.objid_mut(), setLayer: layer] }
     }
+
     /// Sets a boolean value indicating whether the view uses a layer as its backing store.
     pub fn set_wants_layer(&mut self, flag: bool) {
         unsafe { msg_send![self.objid_mut(), setWantsLayer: flag as BOOL] }
     }
+
     /// Sets the contents redraw policy for the view's layer.
     pub fn set_layer_contents_redraw_policy(&mut self, value: isize) {
         unsafe { msg_send![self.objid_mut(), setLayerContentsRedrawPolicy: value] }
     }
+
     /// Sets a boolean value that determines whether the view needs to be redrawn before being displayed.
     pub fn set_needs_display(&mut self, flag: bool) {
         unsafe { msg_send![self.objid_mut(), setNeedsDisplay: flag as BOOL] }
     }
+
     /// Sets the view's frame rectangle, which defines its position and size in its superview's coordinate system.
     pub fn set_frame(&mut self, f: &NSRect) {
         unsafe { msg_send![self.objid_mut(), setFrame: f.clone()] }
     }
+
     /// Gets the view's frame rectangle, which defines its position and size in its superview's coordinate system.
     pub fn frame(&self) -> NSRect {
         unsafe { msg_send![self.objid(), frame] }
     }
+
     /// Converts a size from the view's interior coordinate system to its pixel aligned backing store coordinate system.
     pub fn convert_size_to_backing(&self, size: &NSSize) -> NSSize {
         unsafe { msg_send![self.objid(), convertSizeToBacking:size.clone()] }
     }
+
     /// Sets a boolean value indicating whether the view fills its frame rectangle with opaque content.
     pub fn set_opaque(&mut self, c: bool) {
         unsafe { msg_send![self.objid_mut(), setOpaque: if c { YES } else { NO }] }
     }
+
     /// A boolean value indicating whether the view is being rendered as part of a live resizing operation.
     pub fn in_live_resize(&self) -> bool {
         let b: BOOL = unsafe { msg_send![self.objid(), inLiveResize] };
@@ -294,6 +322,7 @@ impl NSViewController {
             (p as *const NSView).as_ref()
         }
     }
+
     /// The view controller's primary view.
     pub fn view_mut(&mut self) -> Option<&mut NSView> {
         unsafe {
@@ -301,15 +330,17 @@ impl NSViewController {
             (p as *mut NSView).as_mut()
         }
     }
+
     /// The localized title of the receiver's primary view.
-    pub fn title(&self) -> Option<&::NSString> {
+    pub fn title(&self) -> Option<&NSString> {
         unsafe {
             let p: *mut Object = msg_send![&self.0, title];
-            (p as *const ::NSString).as_ref()
+            (p as *const NSString).as_ref()
         }
     }
+
     /// Sets the localized title of the receiver's primary view.
-    pub fn set_title<S: CocoaString + ?Sized>(&self, title: &S) {
+    pub fn set_title(&self, title: &(impl CocoaString + ?Sized)) {
         unsafe { msg_send![&self.0, setTitle: title.to_nsstring().id()] }
     }
 }
@@ -331,15 +362,15 @@ pub struct NSColor(Object);
 DeclareClassDerivative!(NSColor: NSObject);
 impl NSColor {
     pub fn clear_color() -> Option<&'static Self> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSColor").unwrap(), clearColor] };
+        let p: *mut Object = unsafe { msg_send![class!(NSColor), clearColor] };
         unsafe { (p as *const Self).as_ref() }
     }
 
     /// The Core Graphics color object corresponding to the color.
-    pub fn cgcolor(&self) -> &::CGColor {
+    pub fn cgcolor(&self) -> &CGColor {
         unsafe {
             let p: *mut Object = msg_send![self.objid(), CGColor];
-            &*(p as ::CGColorRef)
+            &*(p as CGColorRef)
         }
     }
 }
@@ -350,56 +381,62 @@ pub struct NSFont(Object);
 DeclareClassDerivative!(NSFont: NSObject);
 impl NSFont {
     /// Creates a font object for the specified font name and font size.
-    pub fn with_name<'a, N: CocoaString + ?Sized>(name: &N, size: ::CGFloat) -> Result<&'a Self, ()> {
-        let p: *mut Object =
-            unsafe { msg_send![Class::get("NSFont").unwrap(), fontWithName: name.to_nsstring().objid() size: size] };
+    pub fn with_name<'a>(name: &(impl CocoaString + ?Sized), size: CGFloat) -> Result<&'a Self, ()> {
+        let p: *mut Object = unsafe { msg_send![class!(NSFont), fontWithName: name.to_nsstring().objid() size: size] };
         unsafe { (p as *const Self).as_ref().ok_or(()) }
     }
+
     /// Returns the font used by default for documents and other text under the user's control
     /// (that is, text whose font the user can normally change), in the specified size.
-    pub fn user<'a>(size: ::CGFloat) -> Result<&'a Self, ()> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSFont").unwrap(), userFontOfSize: size] };
+    pub fn user<'a>(size: CGFloat) -> Result<&'a Self, ()> {
+        let p: *mut Object = unsafe { msg_send![class!(NSFont), userFontOfSize: size] };
         unsafe { (p as *const Self).as_ref().ok_or(()) }
     }
+
     /// Returns the Aqua system font used for standard interface items, such as button labels,
     /// menu items, and so on, in the specified size.
-    pub fn system<'a>(size: ::CGFloat) -> Result<&'a Self, ()> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSFont").unwrap(), systemFontOfSize: size] };
+    pub fn system<'a>(size: CGFloat) -> Result<&'a Self, ()> {
+        let p: *mut Object = unsafe { msg_send![class!(NSFont), systemFontOfSize: size] };
         unsafe { (p as *const Self).as_ref().ok_or(()) }
     }
+
     /// Returns the Aqua system font used for standard interface items, such as button labels,
     /// menu items, and so on, in the specified size and the specified weight.
-    pub fn system_with_weight<'a>(size: ::CGFloat, weight: NSFontWeight) -> Result<&'a Self, ()> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSFont").unwrap(), systemFontOfSize: size weight: weight] };
+    pub fn system_with_weight<'a>(size: CGFloat, weight: NSFontWeight) -> Result<&'a Self, ()> {
+        let p: *mut Object = unsafe { msg_send![class!(NSFont), systemFontOfSize: size weight: weight] };
         unsafe { (p as *const Self).as_ref().ok_or(()) }
     }
+
     /// Returns the font used for standard interface items, such as button labels,
     /// menu items, and so on, in the specified size.
-    pub fn message<'a>(size: ::CGFloat) -> Result<&'a Self, ()> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSFont").unwrap(), messageFontOfSize: size] };
+    pub fn message<'a>(size: CGFloat) -> Result<&'a Self, ()> {
+        let p: *mut Object = unsafe { msg_send![class!(NSFont), messageFontOfSize: size] };
         unsafe { (p as *const Self).as_ref().ok_or(()) }
     }
+
     /// Returns the font used for standard interface labels in the specified size.
-    pub fn label<'a>(size: ::CGFloat) -> Result<&'a Self, ()> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSFont").unwrap(), labelFontOfSize: size] };
+    pub fn label<'a>(size: CGFloat) -> Result<&'a Self, ()> {
+        let p: *mut Object = unsafe { msg_send![class!(NSFont), labelFontOfSize: size] };
         unsafe { (p as *const Self).as_ref().ok_or(()) }
     }
+
     /// The point size of the font.
-    pub fn point_size(&self) -> ::CGFloat {
+    pub fn point_size(&self) -> CGFloat {
         unsafe { msg_send![self.objid(), pointSize] }
     }
 
     /// Returns the size of the standard system font.
-    pub fn system_font_size() -> ::CGFloat {
-        unsafe { msg_send![Class::get("NSFont").unwrap(), systemFontSize] }
+    pub fn system_font_size() -> CGFloat {
+        unsafe { msg_send![class!(NSFont), systemFontSize] }
     }
+
     /// Returns the size of the standard label font.
-    pub fn label_font_size() -> ::CGFloat {
-        unsafe { msg_send![Class::get("NSFont").unwrap(), labelFontSize] }
+    pub fn label_font_size() -> CGFloat {
+        unsafe { msg_send![class!(NSFont), labelFontSize] }
     }
 }
 /// System-defined font-weight values.
-pub type NSFontWeight = ::CGFloat;
+pub type NSFontWeight = CGFloat;
 
 /// An object that describes the attributes of a computer's monitor or screen.
 #[derive(ObjcObjectBase)]
@@ -408,11 +445,12 @@ DeclareClassDerivative!(NSScreen: NSObject);
 impl NSScreen {
     /// Returns the screen object containing the window with the keyboard focus.
     pub fn main() -> &'static Self {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSScreen").unwrap(), mainScreen] };
+        let p: *mut Object = unsafe { msg_send![class!(NSScreen), mainScreen] };
         unsafe { (p as *const Self).as_ref().unwrap() }
     }
+
     /// The backing store pixel scale factor for the screen.
-    pub fn backing_scale_factor(&self) -> ::CGFloat {
+    pub fn backing_scale_factor(&self) -> CGFloat {
         unsafe { msg_send![self.objid(), backingScaleFactor] }
     }
 }

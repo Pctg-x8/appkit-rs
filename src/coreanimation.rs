@@ -1,8 +1,8 @@
 //! Core Animation
 
 use super::{CGFloat, CGRect};
+use crate::{CocoaObject, NSObject, ObjcObjectBase};
 use objc::runtime::*;
-use {CocoaObject, NSObject, ObjcObjectBase};
 
 /// An object that manages image-based content and allows you to perform animations on that content.
 #[derive(ObjcObjectBase)]

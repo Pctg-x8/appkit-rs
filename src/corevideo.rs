@@ -1,8 +1,8 @@
 //! Core Video
 
+use crate::{CGDirectDisplayID, ExternalRc};
 use libc::*;
 use std::ptr::null_mut;
-use ExternalRc;
 
 /// A Core Video error type return value.
 pub type CVReturn = i32;
@@ -66,7 +66,7 @@ impl CVDisplayLink {
         }
     }
     /// Creates a display link for a single display.
-    pub fn new_for_display(id: ::CGDirectDisplayID) -> Result<ExternalRc<Self>, CVReturn> {
+    pub fn new_for_display(id: CGDirectDisplayID) -> Result<ExternalRc<Self>, CVReturn> {
         let mut h = null_mut();
         let r = unsafe { CVDisplayLinkCreateWithCGDisplay(id, &mut h) };
         if r == 0 {
@@ -116,7 +116,7 @@ impl CVDisplayLink {
 #[link(name = "QuartzCore", kind = "framework")]
 extern "system" {
     fn CVDisplayLinkCreateWithCGDisplay(
-        displayID: ::CGDirectDisplayID,
+        displayID: CGDirectDisplayID,
         displayLinkOut: *mut CVDisplayLinkRef,
     ) -> CVReturn;
     fn CVDisplayLinkCreateWithActiveCGDisplays(displayLinkOut: *mut CVDisplayLinkRef) -> CVReturn;

@@ -8,8 +8,7 @@ use std::os::raw::c_void;
 use std::os::raw::*;
 use std::ptr::null;
 
-use crate::NSInteger;
-use {CocoaObject, NSObject, ObjcObjectBase};
+use crate::{CocoaObject, CocoaString, NSInteger, NSObject, NSUInteger, ObjcObjectBase};
 
 /// A static, plain-text Unicode string object.
 #[derive(ObjcObjectBase)]
@@ -18,7 +17,7 @@ pub struct NSString(Object);
 DeclareClassDerivative!(NSString: NSObject);
 impl NSString {
     fn alloc() -> Result<*mut Object, ()> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSString").unwrap(), alloc] };
+        let p: *mut Object = unsafe { msg_send![class!(NSString), alloc] };
         if p.is_null() {
             Err(())
         } else {
@@ -26,20 +25,22 @@ impl NSString {
         }
     }
     pub fn empty() -> &'static Self {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSString").unwrap(), string] };
+        let p: *mut Object = unsafe { msg_send![class!(NSString), string] };
         return unsafe {
             (p as *const Self)
                 .as_ref()
                 .expect("Nil returned from [NSString string]")
         };
     }
+
     pub fn from_str(s: &str) -> Result<CocoaObject<Self>, ()> {
         let bytes = s.as_bytes();
         unsafe {
             CocoaObject::from_id(msg_send![Self::alloc()?,
-                initWithBytes: bytes.as_ptr() as *const c_void length: bytes.len() encoding: 4 as ::NSUInteger])
+                initWithBytes: bytes.as_ptr() as *const c_void length: bytes.len() encoding: 4 as NSUInteger])
         }
     }
+
     pub fn to_str(&self) -> &str {
         unsafe { CStr::from_ptr(msg_send![&self.0, UTF8String]).to_str().unwrap() }
     }
@@ -58,14 +59,14 @@ impl NSNumber {
     /// Creates and returns an NSNumber object containing a given value, treating it as a `float`.
     pub fn from_float<'a>(v: c_float) -> Result<&'a Self, ()> {
         unsafe {
-            let p: *mut Object = msg_send![Class::get("NSNumber").unwrap(), numberWithFloat: v];
+            let p: *mut Object = msg_send![class!(NSNumber), numberWithFloat: v];
             (p as *mut Self).as_ref().ok_or(())
         }
     }
     /// Creates and returns an NSNumber object containing a given value, treating it as an `unsigned int`.
     pub fn from_uint<'a>(v: c_uint) -> Result<&'a Self, ()> {
         unsafe {
-            let p: *mut Object = msg_send![Class::get("NSNumber").unwrap(), numberWithUnsignedInt: v];
+            let p: *mut Object = msg_send![class!(NSNumber), numberWithUnsignedInt: v];
             (p as *mut Self).as_ref().ok_or(())
         }
     }
@@ -90,27 +91,31 @@ DeclareClassDerivative!(NSMutableDictionary<K: NSCopying, O: ObjcObjectBase> : N
 impl<KeyType: NSCopying, ObjectType: ObjcObjectBase> NSMutableDictionary<KeyType, ObjectType> {
     /// Creates and returns a mutable dictionary, initially giving it enough allocated memory to
     /// hold a given number of entries.
-    pub fn with_capacity<'a>(cap: ::NSUInteger) -> Result<&'a mut Self, ()> {
+    pub fn with_capacity<'a>(cap: NSUInteger) -> Result<&'a mut Self, ()> {
         unsafe {
-            let p: *mut Object = msg_send![Class::get("NSMutableDictionary").unwrap(), dictionaryWithCapacity: cap];
+            let p: *mut Object = msg_send![class!(NSMutableDictionary), dictionaryWithCapacity: cap];
             return (p as *mut Self).as_mut().ok_or(());
         }
     }
+
     /// Creates a newly allocated mutable dictionary
     pub fn new<'a>() -> Result<&'a mut Self, ()> {
         unsafe {
-            let p: *mut Object = msg_send![Class::get("NSMutableDictionary").unwrap(), dictionary];
+            let p: *mut Object = msg_send![class!(NSMutableDictionary), dictionary];
             return (p as *mut Self).as_mut().ok_or(());
         }
     }
+
     /// Adds a given key-value pair to the dictionary.
     pub fn set(&mut self, key: &KeyType, object: &ObjectType) {
         let _: () = unsafe { msg_send![self.objid_mut(), setObject: object.objid() forKey: key.objid()] };
     }
+
     /// Removes a given key and its associated value from the dictionary.
     pub fn remove(&mut self, key: &KeyType) {
         let _: () = unsafe { msg_send![self.objid_mut(), removeObjectForKey: key.objid()] };
     }
+
     /// Empties the dictionary of its entries.
     pub fn clear(&mut self) {
         let _: () = unsafe { msg_send![self.objid_mut(), removeAllObjects] };
@@ -118,9 +123,10 @@ impl<KeyType: NSCopying, ObjectType: ObjcObjectBase> NSMutableDictionary<KeyType
 }
 impl<KeyType: ObjcObjectBase, ObjectType: ObjcObjectBase> NSDictionary<KeyType, ObjectType> {
     /// The number of entries in the dictionary.
-    pub fn len(&self) -> ::NSUInteger {
+    pub fn len(&self) -> NSUInteger {
         unsafe { msg_send![self.objid(), count] }
     }
+
     /// Returns the value associated with a given key.
     pub fn get(&self, keytype: &KeyType) -> &ObjectType {
         let p: *mut Object = unsafe { msg_send![self.objid(), objectForKey: keytype.objid()] };
@@ -142,14 +148,15 @@ impl<ObjectType: ObjcObjectBase> NSMutableArray<ObjectType> {
     /// Creates a newly allocated array.
     pub fn new<'a>() -> Result<&'a mut Self, ()> {
         unsafe {
-            let p: *mut Object = msg_send![Class::get("NSMutableArray").unwrap(), array];
+            let p: *mut Object = msg_send![class!(NSMutableArray), array];
             return (p as *mut Self).as_mut().ok_or(());
         }
     }
+
     /// Creates and returns an `NSMutableArray` object with enough allocated memory to initially hold a given number of objects.
-    pub fn with_capacity<'a>(cap: ::NSUInteger) -> Result<&'a mut Self, ()> {
+    pub fn with_capacity<'a>(cap: NSUInteger) -> Result<&'a mut Self, ()> {
         unsafe {
-            let p: *mut Object = msg_send![Class::get("NSMutableArray").unwrap(), arrayWithCapacity: cap];
+            let p: *mut Object = msg_send![class!(NSMutableArray), arrayWithCapacity: cap];
             return (p as *mut Self).as_mut().ok_or(());
         }
     }
@@ -158,10 +165,12 @@ impl<ObjectType: ObjcObjectBase> NSMutableArray<ObjectType> {
     pub fn push(&mut self, object: &ObjectType) {
         let _: () = unsafe { msg_send![self.objid_mut(), addObject: object.objid()] };
     }
+
     /// Inserts a given object into the array's contents at a given index.
-    pub fn insert(&mut self, index: ::NSUInteger, object: &ObjectType) {
+    pub fn insert(&mut self, index: NSUInteger, object: &ObjectType) {
         let _: () = unsafe { msg_send![self.objid_mut(), insertObject: object.objid() atIndex: index] };
     }
+
     /// Empties the array of all its elements.
     pub fn clear(&mut self) {
         let _: () = unsafe { msg_send![self.objid_mut(), removeAllObjects] };
@@ -169,11 +178,12 @@ impl<ObjectType: ObjcObjectBase> NSMutableArray<ObjectType> {
 }
 impl<ObjectType: ObjcObjectBase> NSArray<ObjectType> {
     /// The number of objects in the array.
-    pub fn len(&self) -> ::NSUInteger {
+    pub fn len(&self) -> NSUInteger {
         unsafe { msg_send![self.objid(), count] }
     }
+
     /// Returns the object located at the specified index.
-    pub fn get(&self, index: ::NSUInteger) -> &ObjectType {
+    pub fn get(&self, index: NSUInteger) -> &ObjectType {
         let p: *mut Object = unsafe { msg_send![self.objid(), objectAtIndex: index] };
         unsafe { (p as *const ObjectType).as_ref().unwrap() }
     }
@@ -187,11 +197,12 @@ DeclareClassDerivative!(NSBundle: NSObject);
 impl NSBundle {
     /// Returns the bundle object that contains the current executable.
     pub fn main() -> Result<&'static Self, ()> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSBundle").unwrap(), mainBundle] };
+        let p: *mut Object = unsafe { msg_send![class!(NSBundle), mainBundle] };
         unsafe { (p as *const NSBundle).as_ref().ok_or(()) }
     }
+
     /// Returns the value associated with the specified key in the receiver's information property list.
-    pub fn object_for_info_dictionary_key<K: ::CocoaString + ?Sized, V>(&self, key: &K) -> Option<&V> {
+    pub fn object_for_info_dictionary_key<V>(&self, key: &(impl CocoaString + ?Sized)) -> Option<&V> {
         let k = key.to_nsstring();
         unsafe {
             let p: *mut Object = msg_send![self.objid(), objectForInfoDictionaryKey: k.objid()];
@@ -208,14 +219,15 @@ DeclareClassDerivative!(NSProcessInfo: NSObject);
 impl NSProcessInfo {
     /// Returns the process information agent for the process.
     pub fn current() -> Result<&'static Self, ()> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSProcessInfo").unwrap(), processInfo] };
+        let p: *mut Object = unsafe { msg_send![class!(NSProcessInfo), processInfo] };
         unsafe { (p as *const NSProcessInfo).as_ref().ok_or(()) }
     }
+
     /// The name of the process.
-    pub fn name(&self) -> &::NSString {
+    pub fn name(&self) -> &NSString {
         unsafe {
             let p: *mut Object = msg_send![self.objid(), processName];
-            &*(p as *const ::NSString)
+            &*(p as *const NSString)
         }
     }
 }
@@ -228,13 +240,14 @@ DeclareClassDerivative!(NSAttributedString: NSObject);
 unsafe impl NSCopying for NSAttributedString {}
 impl NSAttributedString {
     fn alloc() -> Result<*mut Object, ()> {
-        let p: *mut Object = unsafe { msg_send![Class::get("NSAttributedString").unwrap(), alloc] };
+        let p: *mut Object = unsafe { msg_send![class!(NSAttributedString), alloc] };
         if p.is_null() {
             Err(())
         } else {
             Ok(p)
         }
     }
+
     pub fn new(
         s: &NSString,
         attrs: Option<&NSDictionary<NSAttributedStringKey, Object>>,

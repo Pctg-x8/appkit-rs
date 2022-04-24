@@ -2,6 +2,7 @@
 name = "appkit"
 version = "0.1.0"
 authors = ["S.Percentage <Syn.Tri.Naga@gmail.com>"]
+edition = "2021"
 
 [dependencies]
 objc = "0.2"

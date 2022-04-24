@@ -1,9 +1,9 @@
 //! Core Graphics
 
+use crate::{ExternalRc, ExternalRced};
 use libc::*;
 use objc::{Encode, Encoding};
 use std::ptr::null;
-use {ExternalRc, ExternalRced};
 
 /// A unique identifier for an attached display.
 pub type CGDirectDisplayID = u32;

@@ -1,7 +1,7 @@
 //! Core Foundation
 
+use crate::{ExternalRc, ExternalRced, NSArray, NSAttributedString, NSDictionary, NSNumber, NSString, ObjcObjectBase};
 use libc::*;
-use {ExternalRc, ExternalRced};
 
 /// An untyped "generic" reference to any Core Foundation object.
 pub type CFTypeRef = *const c_void;
@@ -37,12 +37,12 @@ impl CFArray {
     }
 }
 /// toll-free bridging
-impl<T: ::ObjcObjectBase> AsRef<::NSArray<T>> for CFArray {
-    fn as_ref(&self) -> &::NSArray<T> {
+impl<T: ObjcObjectBase> AsRef<NSArray<T>> for CFArray {
+    fn as_ref(&self) -> &NSArray<T> {
         unsafe { ::std::mem::transmute(self) }
     }
 }
-impl<T: ::ObjcObjectBase> AsRef<CFArray> for ::NSArray<T> {
+impl<T: ObjcObjectBase> AsRef<CFArray> for NSArray<T> {
     fn as_ref(&self) -> &CFArray {
         unsafe { ::std::mem::transmute(self) }
     }
@@ -52,12 +52,12 @@ pub enum CFDictionary {}
 /// A reference to an immutable dictionary object.
 pub type CFDictionaryRef = *mut CFDictionary;
 /// toll-free bridging
-impl<K: ::ObjcObjectBase, V: ::ObjcObjectBase> AsRef<::NSDictionary<K, V>> for CFDictionary {
-    fn as_ref(&self) -> &::NSDictionary<K, V> {
+impl<K: ObjcObjectBase, V: ObjcObjectBase> AsRef<NSDictionary<K, V>> for CFDictionary {
+    fn as_ref(&self) -> &NSDictionary<K, V> {
         unsafe { ::std::mem::transmute(self) }
     }
 }
-impl<K: ::ObjcObjectBase, V: ::ObjcObjectBase> AsRef<CFDictionary> for ::NSDictionary<K, V> {
+impl<K: ObjcObjectBase, V: ObjcObjectBase> AsRef<CFDictionary> for NSDictionary<K, V> {
     fn as_ref(&self) -> &CFDictionary {
         unsafe { ::std::mem::transmute(self) }
     }
@@ -73,7 +73,7 @@ impl CFDictionary {
 pub enum CFAttributedString {}
 /// A reference to a CFAttributedString object.
 pub type CFAttributedStringRef = *mut CFAttributedString;
-TollfreeBridge!(CFAttributedString = ::NSAttributedString);
+TollfreeBridge!(CFAttributedString = NSAttributedString);
 
 /// A structure representing a range of sequential items in a container.
 #[repr(C)]
@@ -124,12 +124,12 @@ impl From<RangeFull> for CFRange {
 pub enum CFString {}
 /// A reference to a CFString object.
 pub type CFStringRef = *mut CFString;
-TollfreeBridge!(CFString = ::NSString);
+TollfreeBridge!(CFString = NSString);
 
 pub enum CFNumber {}
 /// A reference to a CFNumber object.
 pub type CFNumberRef = *mut CFNumber;
-TollfreeBridge!(CFNumber = ::NSNumber);
+TollfreeBridge!(CFNumber = NSNumber);
 
 pub enum CFData {}
 /// A reference to a CFData object.
