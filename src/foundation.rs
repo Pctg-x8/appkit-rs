@@ -24,6 +24,7 @@ impl NSString {
             Ok(p)
         }
     }
+
     pub fn empty() -> &'static Self {
         let p: *mut Object = unsafe { msg_send![class!(NSString), string] };
         return unsafe {
