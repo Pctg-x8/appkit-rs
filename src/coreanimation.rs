@@ -37,6 +37,10 @@ impl CAMetalLayer {
         unsafe { CocoaObject::from_id(msg_send![class!(CAMetalLayer), layer]) }
     }
 
+    pub fn set_device(&mut self, device: *mut Object) {
+        let _: () = unsafe { msg_send![self.objid_mut(), setDevice: device] };
+    }
+
     pub fn next_drawable(&mut self) -> Result<CocoaObject<CAMetalDrawable>, ()> {
         unsafe { CocoaObject::from_id(msg_send![self.objid_mut(), nextDrawable]) }
     }
