@@ -12,12 +12,20 @@ extern crate appkit_derive;
 macro_rules! DeclareClassDerivative {
     ($t: ident < $($gid: ident: $cons: path),* > : $o: ty) => {
         impl<$($gid: $cons),*> ::std::ops::Deref for $t<$($gid),*> {
-            type Target = $o; fn deref(&self) -> &$o { unsafe { ::std::mem::transmute(self) } }
+            type Target = $o;
+            fn deref(&self) -> &$o { unsafe { ::std::mem::transmute(self) } }
+        }
+        impl<$($gid: $cons),*> std::ops::DerefMut for $t<$($gid),*> {
+            fn deref_mut(&mut self) -> &mut $o { unsafe { std::mem::transmute(self) } }
         }
     };
     ($t: ty : $o: ty) => {
         impl ::std::ops::Deref for $t {
-            type Target = $o; fn deref(&self) -> &$o { unsafe { ::std::mem::transmute(self) } }
+            type Target = $o;
+            fn deref(&self) -> &$o { unsafe { ::std::mem::transmute(self) } }
+        }
+        impl std::ops::DerefMut for $t {
+            fn deref_mut(&mut self) -> &mut $o { unsafe { std::mem::transmute(self) } }
         }
     };
 }
