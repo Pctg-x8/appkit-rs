@@ -1,4 +1,5 @@
 //! Core Video
+#![allow(non_upper_case_globals)]
 
 use crate::{CGDirectDisplayID, ExternalRc};
 use libc::*;
@@ -6,6 +7,8 @@ use std::ptr::null_mut;
 
 /// A Core Video error type return value.
 pub type CVReturn = i32;
+pub const kCVReturnSuccess: CVReturn = 0;
+
 /// Defines a pointer to a display link output callback function, which is called whenever the display link wants
 /// the application to output a frame.
 pub type CVDisplayLinkOutputCallback = Option<
@@ -59,7 +62,7 @@ impl CVDisplayLink {
     pub fn new_for_active_displays() -> Result<ExternalRc<Self>, CVReturn> {
         let mut h = null_mut();
         let r = unsafe { CVDisplayLinkCreateWithActiveCGDisplays(&mut h) };
-        if r != 0 {
+        if r == kCVReturnSuccess {
             Ok(unsafe { ExternalRc::with_fn(h, CVDisplayLinkRetain, CVDisplayLinkRelease) })
         } else {
             Err(r)
@@ -69,7 +72,7 @@ impl CVDisplayLink {
     pub fn new_for_display(id: CGDirectDisplayID) -> Result<ExternalRc<Self>, CVReturn> {
         let mut h = null_mut();
         let r = unsafe { CVDisplayLinkCreateWithCGDisplay(id, &mut h) };
-        if r == 0 {
+        if r == kCVReturnSuccess {
             Ok(unsafe { ExternalRc::with_fn(h, CVDisplayLinkRetain, CVDisplayLinkRelease) })
         } else {
             Err(r)
@@ -83,7 +86,7 @@ impl CVDisplayLink {
         user: *mut c_void,
     ) -> Result<(), CVReturn> {
         let r = unsafe { CVDisplayLinkSetOutputCallback(self, callback, user) };
-        if r == 0 {
+        if r == kCVReturnSuccess {
             Ok(())
         } else {
             Err(r)
@@ -92,7 +95,7 @@ impl CVDisplayLink {
     /// Activates a display link.
     pub fn start(&mut self) -> Result<(), CVReturn> {
         let r = unsafe { CVDisplayLinkStart(self) };
-        if r == 0 {
+        if r == kCVReturnSuccess {
             Ok(())
         } else {
             Err(r)
@@ -101,7 +104,7 @@ impl CVDisplayLink {
     /// Stops a display link.
     pub fn stop(&mut self) -> Result<(), CVReturn> {
         let r = unsafe { CVDisplayLinkStop(self) };
-        if r == 0 {
+        if r == kCVReturnSuccess {
             Ok(())
         } else {
             Err(r)
