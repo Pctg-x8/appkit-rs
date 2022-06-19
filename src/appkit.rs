@@ -110,8 +110,8 @@ impl NSWindow {
         }
     }
 
-    pub unsafe fn with_view_controller(vc: &mut NSViewController) -> Result<CocoaObject<Self>, ()> {
-        CocoaObject::from_id(msg_send![class!(NSWindow), windowWithContentViewController: vc.as_id_mut()])
+    pub fn with_view_controller(vc: &mut NSViewController) -> Result<CocoaObject<Self>, ()> {
+        unsafe { CocoaObject::from_id(msg_send![class!(NSWindow), windowWithContentViewController: vc.as_id_mut()]) }
     }
 
     pub fn center(&self) {
