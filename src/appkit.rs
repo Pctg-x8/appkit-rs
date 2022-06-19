@@ -331,6 +331,11 @@ impl NSViewController {
         }
     }
 
+    /// Sets the view controller's primary view.
+    pub fn set_view(&mut self, view: &NSView) {
+        let _: () = unsafe { msg_send![&mut self.0, setView: view.objid()] };
+    }
+
     /// The localized title of the receiver's primary view.
     pub fn title(&self) -> Option<&NSString> {
         unsafe {

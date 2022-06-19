@@ -41,8 +41,9 @@ impl CAMetalLayer {
         let _: () = unsafe { msg_send![self.objid_mut(), setDevice: device] };
     }
 
-    pub fn next_drawable(&mut self) -> Result<CocoaObject<CAMetalDrawable>, ()> {
-        unsafe { CocoaObject::from_id(msg_send![self.objid_mut(), nextDrawable]) }
+    pub fn next_drawable(&mut self) -> Option<&mut CAMetalDrawable> {
+        let p: *mut Object = unsafe { msg_send![self.objid_mut(), nextDrawable] };
+        unsafe { (p as *mut CAMetalDrawable).as_mut() }
     }
 }
 
@@ -55,5 +56,10 @@ impl CAMetalDrawable {
     /// 本当はMTLTexture
     pub fn texture(&self) -> *const Object {
         unsafe { msg_send![self.objid(), texture] }
+    }
+
+    /// 本当はMTLTexture
+    pub fn texture_mut(&mut self) -> *mut Object {
+        unsafe { msg_send![self.objid_mut(), texture] }
     }
 }
