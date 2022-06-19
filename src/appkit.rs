@@ -2,10 +2,10 @@
 
 use crate::{
     CALayer, CGColor, CGColorRef, CGFloat, CGRect, CGSize, CocoaObject, CocoaString, NSInteger, NSObject, NSString,
-    NSUInteger, ObjcObjectBase,
+    NSUInteger,
 };
-use appkit_derive::ObjcObjectBase;
 use objc::runtime::*;
+use objc_ext::ObjcObject;
 use std::mem::zeroed;
 
 /*#[cfg(feature = "with_ferrite")]
@@ -63,9 +63,7 @@ bitflags! {
     }
 }
 
-#[derive(ObjcObjectBase)]
-pub struct NSApplication(Object);
-DeclareClassDerivative!(NSApplication: NSObject);
+objc_ext::DefineObjcObjectWrapper!(pub NSApplication : NSObject);
 impl NSApplication {
     pub fn shared() -> Option<&'static Self> {
         let p: *mut Object = unsafe { msg_send![class!(NSApplication), sharedApplication] };
@@ -93,9 +91,8 @@ impl NSApplication {
         let _: () = unsafe { msg_send![&self.0, setMainMenu: &menu.0] };
     }
 }
-#[derive(ObjcObjectBase)]
-pub struct NSWindow(Object);
-DeclareClassDerivative!(NSWindow: NSObject);
+
+objc_ext::DefineObjcObjectWrapper!(pub NSWindow : NSResponder);
 impl NSWindow {
     fn alloc() -> Result<*mut Object, ()> {
         let p: *mut Object = unsafe { msg_send![class!(NSWindow), alloc] };
@@ -141,10 +138,9 @@ impl NSWindow {
         unsafe { msg_send![&self.0, setOpaque: if op { YES } else { NO }] }
     }
 }
-/// An object that manages an app's menus.
-#[derive(ObjcObjectBase)]
-pub struct NSMenu(Object);
-DeclareClassDerivative!(NSMenu: NSObject);
+
+// An object that manages an app's menus.
+objc_ext::DefineObjcObjectWrapper!(pub NSMenu : NSObject);
 impl NSMenu {
     pub fn new() -> Result<CocoaObject<Self>, ()> {
         unsafe { CocoaObject::from_id(msg_send![Class::get("NSMenu").unwrap(), new]) }
@@ -174,10 +170,8 @@ impl NSMenu {
         unsafe { item.as_mut().ok_or(()) }
     }
 }
-/// A command item in an app menu.
-#[derive(ObjcObjectBase)]
-pub struct NSMenuItem(Object);
-DeclareClassDerivative!(NSMenuItem: NSObject);
+// A command item in an app menu.
+objc_ext::DefineObjcObjectWrapper!(pub NSMenuItem : NSObject);
 impl NSMenuItem {
     fn alloc() -> Result<*mut Object, ()> {
         let p: *mut Object = unsafe { msg_send![class!(NSMenuItem), alloc] };
@@ -198,7 +192,7 @@ impl NSMenuItem {
         let k = key_equivalent.unwrap_or_else(|| NSString::empty());
         unsafe {
             CocoaObject::from_id(msg_send![Self::alloc()?,
-                initWithTitle: title.id() action: action keyEquivalent: k.objid()])
+                initWithTitle: title.id() action: action keyEquivalent: k.as_id()])
         }
     }
 
@@ -247,78 +241,75 @@ impl NSMenuItem {
     }
 }
 
-/// The infrastructure for drawing, printing, and handling events in an app.
-#[derive(ObjcObjectBase)]
-pub struct NSView(Object);
-DeclareClassDerivative!(NSView: NSObject);
+// The infrastructure for drawing, printing, and handling events in an app.
+objc_ext::DefineObjcObjectWrapper!(pub NSView : NSResponder);
 impl NSView {
     /// The Core Animation layer that the view uses as its backing store.
     pub fn layer(&self) -> Option<&CALayer> {
-        let p: *mut Object = unsafe { msg_send![self.objid(), layer] };
+        let p: *mut Object = unsafe { msg_send![self.as_id(), layer] };
         unsafe { (p as *const CALayer).as_ref() }
     }
 
     /// The Core Animation layer that the view uses as its backing store.
     pub fn layer_mut(&mut self) -> Option<&mut CALayer> {
-        let p: *mut Object = unsafe { msg_send![self.objid_mut(), layer] };
+        let p: *mut Object = unsafe { msg_send![self.as_id_mut(), layer] };
         unsafe { (p as *mut CALayer).as_mut() }
     }
 
     /// Sets the Core Animation layer that the view uses as its backing store.
     pub fn set_layer(&mut self, layer: *mut Object) {
-        unsafe { msg_send![self.objid_mut(), setLayer: layer] }
+        unsafe { msg_send![self.as_id_mut(), setLayer: layer] }
     }
 
     /// Sets a boolean value indicating whether the view uses a layer as its backing store.
     pub fn set_wants_layer(&mut self, flag: bool) {
-        unsafe { msg_send![self.objid_mut(), setWantsLayer: flag as BOOL] }
+        unsafe { msg_send![self.as_id_mut(), setWantsLayer: flag as BOOL] }
     }
 
     /// Sets the contents redraw policy for the view's layer.
     pub fn set_layer_contents_redraw_policy(&mut self, value: isize) {
-        unsafe { msg_send![self.objid_mut(), setLayerContentsRedrawPolicy: value] }
+        unsafe { msg_send![self.as_id_mut(), setLayerContentsRedrawPolicy: value] }
     }
 
     /// Sets a boolean value that determines whether the view needs to be redrawn before being displayed.
     pub fn set_needs_display(&mut self, flag: bool) {
-        unsafe { msg_send![self.objid_mut(), setNeedsDisplay: flag as BOOL] }
+        unsafe { msg_send![self.as_id_mut(), setNeedsDisplay: flag as BOOL] }
     }
 
     /// Sets the view's frame rectangle, which defines its position and size in its superview's coordinate system.
     pub fn set_frame(&mut self, f: &NSRect) {
-        unsafe { msg_send![self.objid_mut(), setFrame: f.clone()] }
+        unsafe { msg_send![self.as_id_mut(), setFrame: f.clone()] }
     }
 
     /// Gets the view's frame rectangle, which defines its position and size in its superview's coordinate system.
     pub fn frame(&self) -> NSRect {
-        unsafe { msg_send![self.objid(), frame] }
+        unsafe { msg_send![self.as_id(), frame] }
     }
 
     /// Converts a size from the view's interior coordinate system to its pixel aligned backing store coordinate system.
     pub fn convert_size_to_backing(&self, size: &NSSize) -> NSSize {
-        unsafe { msg_send![self.objid(), convertSizeToBacking:size.clone()] }
+        unsafe { msg_send![self.as_id(), convertSizeToBacking:size.clone()] }
     }
 
     /// Sets a boolean value indicating whether the view fills its frame rectangle with opaque content.
     pub fn set_opaque(&mut self, c: bool) {
-        unsafe { msg_send![self.objid_mut(), setOpaque: if c { YES } else { NO }] }
+        unsafe { msg_send![self.as_id_mut(), setOpaque: if c { YES } else { NO }] }
     }
 
     /// A boolean value indicating whether the view is being rendered as part of a live resizing operation.
     pub fn in_live_resize(&self) -> bool {
-        let b: BOOL = unsafe { msg_send![self.objid(), inLiveResize] };
+        let b: BOOL = unsafe { msg_send![self.as_id(), inLiveResize] };
         b == YES
     }
 }
-/// A controller that manages a view, typically loaded from a nib file.
-#[derive(ObjcObjectBase)]
-pub struct NSViewController(Object);
-DeclareClassDerivative!(NSViewController: NSObject);
+
+// A controller that manages a view, typically loaded from a nib file.
+objc_ext::DefineObjcObjectWrapper!(pub NSViewController : NSResponder);
 impl NSViewController {
     /// The view controller's primary view.
     pub fn view(&self) -> Option<&NSView> {
         unsafe {
-            let p: *mut Object = msg_send![self.objid(), view];
+            let p: *mut Object = msg_send![self.as_id(), view];
             (p as *const NSView).as_ref()
         }
     }
@@ -326,14 +317,14 @@ impl NSViewController {
     /// The view controller's primary view.
     pub fn view_mut(&mut self) -> Option<&mut NSView> {
         unsafe {
-            let p: *mut Object = msg_send![self.objid(), view];
+            let p: *mut Object = msg_send![self.as_id(), view];
             (p as *mut NSView).as_mut()
         }
     }
 
     /// Sets the view controller's primary view.
     pub fn set_view(&mut self, view: &NSView) {
-        let _: () = unsafe { msg_send![&mut self.0, setView: view.objid()] };
+        let _: () = unsafe { msg_send![&mut self.0, setView: view.as_id()] };
     }
 
     /// The localized title of the receiver's primary view.
@@ -362,9 +353,7 @@ impl NSRunLoop
 }
 impl Drop for NSRunLoop { fn drop(&mut self) { unsafe { msg_send![self.0, release] } } }*/
 
-#[derive(ObjcObjectBase)]
-pub struct NSColor(Object);
-DeclareClassDerivative!(NSColor: NSObject);
+objc_ext::DefineObjcObjectWrapper!(pub NSColor : NSObject);
 impl NSColor {
     pub fn clear_color() -> Option<&'static Self> {
         let p: *mut Object = unsafe { msg_send![class!(NSColor), clearColor] };
@@ -374,20 +363,18 @@ impl NSColor {
     /// The Core Graphics color object corresponding to the color.
     pub fn cgcolor(&self) -> &CGColor {
         unsafe {
-            let p: *mut Object = msg_send![self.objid(), CGColor];
+            let p: *mut Object = msg_send![self.as_id(), CGColor];
             &*(p as CGColorRef)
         }
     }
 }
 
-/// The representation of a font in an app.
-#[derive(ObjcObjectBase)]
-pub struct NSFont(Object);
-DeclareClassDerivative!(NSFont: NSObject);
+// The representation of a font in an app.
+objc_ext::DefineObjcObjectWrapper!(pub NSFont : NSObject);
 impl NSFont {
     /// Creates a font object for the specified font name and font size.
     pub fn with_name<'a>(name: &(impl CocoaString + ?Sized), size: CGFloat) -> Result<&'a Self, ()> {
-        let p: *mut Object = unsafe { msg_send![class!(NSFont), fontWithName: name.to_nsstring().objid() size: size] };
+        let p: *mut Object = unsafe { msg_send![class!(NSFont), fontWithName: name.to_nsstring().as_id() size: size] };
         unsafe { (p as *const Self).as_ref().ok_or(()) }
     }
 
@@ -427,7 +414,7 @@ impl NSFont {
 
     /// The point size of the font.
     pub fn point_size(&self) -> CGFloat {
-        unsafe { msg_send![self.objid(), pointSize] }
+        unsafe { msg_send![self.as_id(), pointSize] }
     }
 
     /// Returns the size of the standard system font.
@@ -443,10 +430,8 @@ impl NSFont {
 /// System-defined font-weight values.
 pub type NSFontWeight = CGFloat;
 
-/// An object that describes the attributes of a computer's monitor or screen.
-#[derive(ObjcObjectBase)]
-pub struct NSScreen(Object);
-DeclareClassDerivative!(NSScreen: NSObject);
+// An object that describes the attributes of a computer's monitor or screen.
+objc_ext::DefineObjcObjectWrapper!(pub NSScreen : NSObject);
 impl NSScreen {
     /// Returns the screen object containing the window with the keyboard focus.
     pub fn main() -> &'static Self {
@@ -456,6 +441,8 @@ impl NSScreen {
 
     /// The backing store pixel scale factor for the screen.
     pub fn backing_scale_factor(&self) -> CGFloat {
-        unsafe { msg_send![self.objid(), backingScaleFactor] }
+        unsafe { msg_send![self.as_id(), backingScaleFactor] }
     }
 }
+
+objc_ext::DefineObjcObjectWrapper!(pub NSResponder : NSObject);

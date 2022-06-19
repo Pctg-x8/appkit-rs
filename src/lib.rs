@@ -5,66 +5,19 @@ extern crate objc;
 extern crate libc;
 #[macro_use]
 extern crate bitflags;
-#[macro_use]
-extern crate appkit_derive;
 
-#[macro_export]
-macro_rules! DeclareClassDerivative {
-    ($t: ident < $($gid: ident: $cons: path),* > : $o: ty) => {
-        impl<$($gid: $cons),*> ::std::ops::Deref for $t<$($gid),*> {
-            type Target = $o;
-            fn deref(&self) -> &$o { unsafe { ::std::mem::transmute(self) } }
-        }
-        impl<$($gid: $cons),*> std::ops::DerefMut for $t<$($gid),*> {
-            fn deref_mut(&mut self) -> &mut $o { unsafe { std::mem::transmute(self) } }
-        }
-    };
-    ($t: ty : $o: ty) => {
-        impl ::std::ops::Deref for $t {
-            type Target = $o;
-            fn deref(&self) -> &$o { unsafe { ::std::mem::transmute(self) } }
-        }
-        impl std::ops::DerefMut for $t {
-            fn deref_mut(&mut self) -> &mut $o { unsafe { std::mem::transmute(self) } }
-        }
-    };
-}
-pub trait ObjcObjectBase {
-    fn objid(&self) -> &Object;
-    fn objid_mut(&mut self) -> &mut Object;
-}
-/// Identity for Object
-impl ObjcObjectBase for Object {
-    fn objid(&self) -> &Object {
-        self
-    }
-    fn objid_mut(&mut self) -> &mut Object {
-        self
-    }
-}
-/// Reference as Object
-impl<'a, T: 'a> ObjcObjectBase for &'a mut T
-where
-    T: ObjcObjectBase,
-{
-    fn objid(&self) -> &Object {
-        unsafe { std::mem::transmute_copy(self) }
-    }
-    fn objid_mut(&mut self) -> &mut Object {
-        unsafe { std::mem::transmute_copy(self) }
-    }
-}
-#[derive(ObjcObjectBase)]
-pub struct NSObject(Object);
+objc_ext::DefineObjcObjectWrapper!(pub NSObject);
 impl NSObject {
     pub fn retain(&self) -> *mut Self {
         let p: *mut Object = unsafe { msg_send![&self.0, retain] };
         return p as *mut Self;
     }
+
     pub fn release(&self) {
         let _: () = unsafe { msg_send![&self.0, release] };
     }
 }
+
 #[cfg(target_pointer_width = "64")]
 pub type NSInteger = i64;
 #[cfg(target_pointer_width = "64")]
@@ -119,6 +72,7 @@ mod coretext;
 pub use coretext::*;
 mod audiotoolbox;
 pub use audiotoolbox::*;
+use objc_ext::ObjcObject;
 
 use std::borrow::{Borrow, BorrowMut, Cow, ToOwned};
 use std::ops::{Deref, DerefMut};
@@ -180,8 +134,8 @@ pub trait ExternalRced: Sized {
 }
 
 use objc::runtime::Object;
-pub struct CocoaObject<T: ObjcObjectBase>(*mut T);
-impl<T: ObjcObjectBase> Clone for CocoaObject<T> {
+pub struct CocoaObject<T: ObjcObject>(*mut T);
+impl<T: ObjcObject> Clone for CocoaObject<T> {
     fn clone(&self) -> Self {
         let p: *mut Object = unsafe { msg_send![self.id(), retain] };
         if p.is_null() {
@@ -190,12 +144,12 @@ impl<T: ObjcObjectBase> Clone for CocoaObject<T> {
         return CocoaObject(self.0);
     }
 }
-impl<T: ObjcObjectBase> Drop for CocoaObject<T> {
+impl<T: ObjcObject> Drop for CocoaObject<T> {
     fn drop(&mut self) {
         let _: () = unsafe { msg_send![self.id(), release] };
     }
 }
-impl<T: ObjcObjectBase> CocoaObject<T> {
+impl<T: ObjcObject> CocoaObject<T> {
     pub fn id(&self) -> *mut Object {
         self.0 as *mut _
     }
@@ -219,23 +173,23 @@ impl<T: ObjcObjectBase> CocoaObject<T> {
         CocoaObject(id as _)
     }
 }
-impl<T: ObjcObjectBase> Deref for CocoaObject<T> {
+impl<T: ObjcObject> Deref for CocoaObject<T> {
     type Target = T;
     fn deref(&self) -> &T {
         unsafe { &*self.0 }
     }
 }
-impl<T: ObjcObjectBase> DerefMut for CocoaObject<T> {
+impl<T: ObjcObject> DerefMut for CocoaObject<T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.0 }
     }
 }
-impl<T: ObjcObjectBase> Borrow<T> for CocoaObject<T> {
+impl<T: ObjcObject> Borrow<T> for CocoaObject<T> {
     fn borrow(&self) -> &T {
         &**self
     }
 }
-impl<T: ObjcObjectBase> BorrowMut<T> for CocoaObject<T> {
+impl<T: ObjcObject> BorrowMut<T> for CocoaObject<T> {
     fn borrow_mut(&mut self) -> &mut T {
         &mut **self
     }
