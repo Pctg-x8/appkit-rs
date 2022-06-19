@@ -1,7 +1,7 @@
 //! Core Animation
 
 use super::{CGFloat, CGRect};
-use crate::{CocoaObject, NSObject, ObjcObjectBase};
+use crate::{NSObject, ObjcObjectBase};
 use objc::runtime::*;
 
 /// An object that manages image-based content and allows you to perform animations on that content.
@@ -25,41 +25,5 @@ impl CALayer {
     /// Sets the layer's bounds rectangle.
     pub fn set_bounds(&mut self, rect: CGRect) {
         unsafe { msg_send![self.objid_mut(), setBounds: rect] }
-    }
-}
-
-/// A layer that manages a pool of Metal drawables.
-#[derive(ObjcObjectBase)]
-pub struct CAMetalLayer(Object);
-DeclareClassDerivative!(CAMetalLayer: CALayer);
-impl CAMetalLayer {
-    pub fn layer() -> Result<CocoaObject<Self>, ()> {
-        unsafe { CocoaObject::from_id(msg_send![class!(CAMetalLayer), layer]) }
-    }
-
-    pub fn set_device(&mut self, device: *mut Object) {
-        let _: () = unsafe { msg_send![self.objid_mut(), setDevice: device] };
-    }
-
-    pub fn next_drawable(&mut self) -> Option<&mut CAMetalDrawable> {
-        let p: *mut Object = unsafe { msg_send![self.objid_mut(), nextDrawable] };
-        unsafe { (p as *mut CAMetalDrawable).as_mut() }
-    }
-}
-
-/// A Metal drawable associated with a Core Animation layer.
-#[derive(ObjcObjectBase)]
-pub struct CAMetalDrawable(Object);
-// 本当はMTLDrawable
-DeclareClassDerivative!(CAMetalDrawable: NSObject);
-impl CAMetalDrawable {
-    /// 本当はMTLTexture
-    pub fn texture(&self) -> *const Object {
-        unsafe { msg_send![self.objid(), texture] }
-    }
-
-    /// 本当はMTLTexture
-    pub fn texture_mut(&mut self) -> *mut Object {
-        unsafe { msg_send![self.objid_mut(), texture] }
     }
 }
