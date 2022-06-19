@@ -110,7 +110,7 @@ impl NSWindow {
         }
     }
 
-    pub unsafe fn with_view_controller_ptr(vc: &mut NSViewController) -> Result<CocoaObject<Self>, ()> {
+    pub unsafe fn with_view_controller(vc: &mut NSViewController) -> Result<CocoaObject<Self>, ()> {
         CocoaObject::from_id(msg_send![class!(NSWindow), windowWithContentViewController: vc.as_id_mut()])
     }
 
