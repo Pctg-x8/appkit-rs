@@ -108,14 +108,14 @@ unsafe impl<K: NSCopying, V: ObjcObject> ObjcObject for NSMutableDictionary<K, V
     }
 }
 impl<K: NSCopying, V: ObjcObject> std::ops::Deref for NSMutableDictionary<K, V> {
-    type Target = NSObject;
+    type Target = NSDictionary<K, V>;
 
-    fn deref(&self) -> &NSObject {
+    fn deref(&self) -> &NSDictionary<K, V> {
         unsafe { std::mem::transmute(self) }
     }
 }
 impl<K: NSCopying, V: ObjcObject> std::ops::DerefMut for NSMutableDictionary<K, V> {
-    fn deref_mut(&mut self) -> &mut NSObject {
+    fn deref_mut(&mut self) -> &mut NSDictionary<K, V> {
         unsafe { std::mem::transmute(self) }
     }
 }
@@ -201,13 +201,13 @@ unsafe impl<O: ObjcObject> ObjcObject for NSMutableArray<O> {
     }
 }
 impl<O: ObjcObject> std::ops::Deref for NSMutableArray<O> {
-    type Target = NSObject;
-    fn deref(&self) -> &NSObject {
+    type Target = NSArray<O>;
+    fn deref(&self) -> &NSArray<O> {
         unsafe { std::mem::transmute(self) }
     }
 }
 impl<O: ObjcObject> std::ops::DerefMut for NSMutableArray<O> {
-    fn deref_mut(&mut self) -> &mut NSObject {
+    fn deref_mut(&mut self) -> &mut NSArray<O> {
         unsafe { std::mem::transmute(self) }
     }
 }
