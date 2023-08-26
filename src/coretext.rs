@@ -131,6 +131,27 @@ impl CTFont {
         let ptf = transform.map_or(null(), |p| p as _);
         return unsafe { CGPath::own_from(CTFontCreatePathForGlyph(self as *const _ as _, glyph, ptf)).ok_or(()) };
     }
+
+    /// Returns a new font with additional attributes based on the original font.
+    pub fn create_copy_with_attributes(
+        &self,
+        size: CGFloat,
+        transform: Option<&CGAffineTransform>,
+        attributes: Option<&CTFontDescriptor>,
+    ) -> Result<ExternalRc<Self>, ()> {
+        let transform_ptr = transform.map_or(null(), |p| p as _);
+        let attributes_ptr = attributes.map_or(null(), |p| p as _);
+
+        unsafe {
+            Self::own_from(CTFontCreateCopyWithAttributes(
+                self as *const _ as _,
+                size,
+                transform_ptr,
+                attributes_ptr as *const _ as _,
+            ))
+            .ok_or(())
+        }
+    }
 }
 /// Font Metrics
 impl CTFont {
@@ -408,6 +429,12 @@ extern "system" {
         descriptor: CTFontDescriptorRef,
         size: CGFloat,
         matrix: *const CGAffineTransform,
+    ) -> CTFontRef;
+    fn CTFontCreateCopyWithAttributes(
+        font: CTFontRef,
+        size: CGFloat,
+        matrix: *const CGAffineTransform,
+        attributes: CTFontDescriptorRef,
     ) -> CTFontRef;
     fn CTFontCopySupportedLanguages(font: CTFontRef) -> CFArrayRef;
     fn CTFontGetGlyphsForCharacters(
