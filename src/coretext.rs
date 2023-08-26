@@ -155,6 +155,10 @@ impl CTFont {
 }
 /// Font Metrics
 impl CTFont {
+    /// Returns the point size of the font.
+    pub fn size(&self) -> CGFloat {
+        unsafe { CTFontGetSize(self as *const _ as _) }
+    }
     /// Returns the scaled font-ascent metric of the font.
     pub fn ascent(&self) -> CGFloat {
         unsafe { CTFontGetAscent(self as *const _ as _) }
@@ -462,6 +466,7 @@ extern "system" {
     fn CTLineGetGlyphRuns(line: CTLineRef) -> CFArrayRef;
     fn CTFrameGetLineOrigins(frame: CTFrameRef, range: CFRange, origins: *mut CGPoint);
 
+    fn CTFontGetSize(font: CTFontRef) -> CGFloat;
     fn CTFontGetCapHeight(font: CTFontRef) -> CGFloat;
     fn CTFontGetXHeight(font: CTFontRef) -> CGFloat;
     fn CTFontGetAscent(font: CTFontRef) -> CGFloat;
