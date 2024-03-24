@@ -2,6 +2,7 @@
 #![allow(non_upper_case_globals)]
 
 use crate::{CGDirectDisplayID, ExternalRc};
+use appkit_rs_derive::external_refcounted;
 use libc::*;
 use std::ptr::null_mut;
 
@@ -53,6 +54,7 @@ pub struct CVSMPTETime {
 pub type CVOptionFlags = u64;
 
 /// A high-priority thread that notifies your app when a given display will need each frame.
+#[external_refcounted(CVDisplayLinkRetain, CVDisplayLinkRelease)]
 pub enum CVDisplayLink {}
 /// A reference to a display link object.
 pub type CVDisplayLinkRef = *mut CVDisplayLink;
@@ -62,8 +64,9 @@ impl CVDisplayLink {
     pub fn new_for_active_displays() -> Result<ExternalRc<Self>, CVReturn> {
         let mut h = null_mut();
         let r = unsafe { CVDisplayLinkCreateWithActiveCGDisplays(&mut h) };
+
         if r == kCVReturnSuccess {
-            Ok(unsafe { ExternalRc::with_fn(h, CVDisplayLinkRetain, CVDisplayLinkRelease) })
+            Ok(unsafe { ExternalRc::retained(core::ptr::NonNull::new_unchecked(h)) })
         } else {
             Err(r)
         }
@@ -72,8 +75,9 @@ impl CVDisplayLink {
     pub fn new_for_display(id: CGDirectDisplayID) -> Result<ExternalRc<Self>, CVReturn> {
         let mut h = null_mut();
         let r = unsafe { CVDisplayLinkCreateWithCGDisplay(id, &mut h) };
+
         if r == kCVReturnSuccess {
-            Ok(unsafe { ExternalRc::with_fn(h, CVDisplayLinkRetain, CVDisplayLinkRelease) })
+            Ok(unsafe { ExternalRc::retained(core::ptr::NonNull::new_unchecked(h)) })
         } else {
             Err(r)
         }
@@ -86,6 +90,7 @@ impl CVDisplayLink {
         user: *mut c_void,
     ) -> Result<(), CVReturn> {
         let r = unsafe { CVDisplayLinkSetOutputCallback(self, callback, user) };
+
         if r == kCVReturnSuccess {
             Ok(())
         } else {
@@ -95,6 +100,7 @@ impl CVDisplayLink {
     /// Activates a display link.
     pub fn start(&mut self) -> Result<(), CVReturn> {
         let r = unsafe { CVDisplayLinkStart(self) };
+
         if r == kCVReturnSuccess {
             Ok(())
         } else {
@@ -104,6 +110,7 @@ impl CVDisplayLink {
     /// Stops a display link.
     pub fn stop(&mut self) -> Result<(), CVReturn> {
         let r = unsafe { CVDisplayLinkStop(self) };
+
         if r == kCVReturnSuccess {
             Ok(())
         } else {

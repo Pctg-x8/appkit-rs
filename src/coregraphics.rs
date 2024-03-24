@@ -1,6 +1,7 @@
 //! Core Graphics
 
-use crate::{ExternalRc, ExternalRced};
+use crate::ExternalRc;
+use appkit_rs_derive::external_refcounted;
 use libc::*;
 use objc::{Encode, Encoding};
 use std::ptr::null;
@@ -102,42 +103,37 @@ impl Default for CGAffineTransform {
 }
 
 /// A set of character glyphs and layout information for drawing text.
+#[external_refcounted(CGFontRetain, CGFontRelease)]
 pub enum CGFont {}
 /// A set of character glyphs and layout information for drawing text.
 pub type CGFontRef = *mut CGFont;
-impl ExternalRced for CGFont {
-    unsafe fn own_from_unchecked(p: *mut Self) -> ExternalRc<Self> {
-        ExternalRc::with_fn(p, CGFontRetain, CGFontRelease)
-    }
-}
 
+#[external_refcounted(CGPathRetain, CGPathRelease)]
 pub enum CGPath {}
 /// An immutable graphics path: a mathmatical description of shapes or lines to be drawn in a graphics context.
 pub type CGPathRef = *mut CGPath;
-impl ExternalRced for CGPath {
-    unsafe fn own_from_unchecked(p: *mut Self) -> ExternalRc<Self> {
-        ExternalRc::with_fn(p, CGPathRetain, CGPathRelease)
-    }
-}
 /// A mutable graphics path: a mathematical description of shapes or lines to be drawn in a graphics context.
 pub type CGMutablePathRef = *mut CGPath;
 impl CGPath {
     /// Create an immutable path of a rectangle.
     pub fn new_rect(r: CGRect, transform: Option<&CGAffineTransform>) -> Result<ExternalRc<Self>, ()> {
-        unsafe { Self::own_from(CGPathCreateWithRect(r, transform.map_or(null(), |p| p as *const _))).ok_or(()) }
+        let transform_ptr = transform.map_or_else(null, |p| p as *const _);
+
+        unsafe { ExternalRc::retained_checked(CGPathCreateWithRect(r, transform_ptr)).ok_or(()) }
     }
     /// Creates a mutable graphics path.
     pub fn new_mutable() -> Result<ExternalRc<Self>, ()> {
-        unsafe { Self::own_from(CGPathCreateMutable()).ok_or(()) }
+        unsafe { ExternalRc::retained_checked(CGPathCreateMutable()).ok_or(()) }
     }
 
     /// Appends a path to onto a mutable graphics path.
     pub fn add_path(&mut self, p: &Self, transform: Option<&CGAffineTransform>) {
-        let ptf = transform.map_or(null(), |p| p as _);
+        let ptf = transform.map_or_else(null, |p| p as _);
+
         unsafe { CGPathAddPath(self as _, ptf, p as *const _ as _) }
     }
     /// For each element in a graphics path, calls a custom applier function.
-    pub unsafe fn apply_unchecked(&self, ctx: *mut c_void, fnptr: CGPathApplierFunction) {
+    pub unsafe fn apply_raw(&self, ctx: *mut c_void, fnptr: CGPathApplierFunction) {
         CGPathApply(self as *const _ as _, ctx, fnptr)
     }
     /// For each element in a graphics path, calls a custom applier function. (safety version)
@@ -153,7 +149,7 @@ impl CGPath {
             callback(unsafe { element.as_ref().unwrap() });
         }
         unsafe {
-            self.apply_unchecked(&mut callback as *mut F as _, cb_wrap::<F>);
+            self.apply_raw(&mut callback as *mut F as _, cb_wrap::<F>);
         }
     }
 }

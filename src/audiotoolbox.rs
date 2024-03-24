@@ -97,17 +97,17 @@ pub struct AudioComponentDescription {
     pub component_flags_mask: u32,
 }
 
-macro_rules! BuildFourcc {
-    ($a: expr, $b: expr, $c: expr, $d: expr) => {
-        $d as u32 | (($c as u32) << 8) | (($b as u32) << 16) | (($a as u32) << 24)
-    };
+#[inline(always)]
+const fn fourcc(bytes: [u8; 4]) -> u32 {
+    u32::from_le_bytes(bytes)
 }
-pub const kAudioUnitType_Output: super::OSType = BuildFourcc!(b'a', b'u', b'o', b'u');
-pub const kAudioUnitSubType_HALOutput: super::OSType = BuildFourcc!(b'a', b'h', b'a', b'l');
-pub const kAudioUnitSubType_DefaultOutput: super::OSType = BuildFourcc!(b'd', b'e', b'f', b' ');
-pub const kAudioUnitSubType_SystemOutput: super::OSType = BuildFourcc!(b's', b'y', b's', b' ');
-pub const kAudioUnitManufacturer_Apple: super::OSType = BuildFourcc!(b'a', b'p', b'p', b'l');
-pub const kAudioFormatLinearPCM: AudioFormatID = BuildFourcc!(b'l', b'p', b'c', b'm');
+
+pub const kAudioUnitType_Output: super::OSType = fourcc(*b"auou");
+pub const kAudioUnitSubType_HALOutput: super::OSType = fourcc(*b"ahal");
+pub const kAudioUnitSubType_DefaultOutput: super::OSType = fourcc(*b"def ");
+pub const kAudioUnitSubType_SystemOutput: super::OSType = fourcc(*b"sys ");
+pub const kAudioUnitManufacturer_Apple: super::OSType = fourcc(*b"appl");
+pub const kAudioFormatLinearPCM: AudioFormatID = fourcc(*b"lpcm");
 
 #[repr(C)]
 #[derive(Debug, Clone)]

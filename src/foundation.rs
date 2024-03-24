@@ -24,11 +24,12 @@ impl NSString {
 
     pub fn empty() -> &'static Self {
         let p: *mut Object = unsafe { msg_send![class!(NSString), string] };
-        return unsafe {
+
+        unsafe {
             (p as *const Self)
                 .as_ref()
                 .expect("Nil returned from [NSString string]")
-        };
+        }
     }
 
     pub fn from_str(s: &str) -> Result<CocoaObject<Self>, ()> {
@@ -39,8 +40,19 @@ impl NSString {
         }
     }
 
+    pub fn to_cstr(&self) -> &CStr {
+        unsafe { CStr::from_ptr(msg_send![self.as_id(), UTF8String]) }
+    }
+
     pub fn to_str(&self) -> &str {
-        unsafe { CStr::from_ptr(msg_send![&self.0, UTF8String]).to_str().unwrap() }
+        self.to_cstr().to_str().unwrap()
+    }
+}
+impl ToOwned for NSString {
+    type Owned = CocoaObject<Self>;
+
+    fn to_owned(&self) -> Self::Owned {
+        unsafe { core::mem::transmute::<_, &CocoaObject<Self>>(self).clone() }
     }
 }
 
@@ -49,19 +61,13 @@ objc_ext::DefineObjcObjectWrapper!(pub NSNumber : NSValue);
 objc_ext::DefineObjcObjectWrapper!(pub NSValue : NSObject);
 impl NSNumber {
     /// Creates and returns an NSNumber object containing a given value, treating it as a `float`.
-    pub fn from_float<'a>(v: c_float) -> Result<&'a Self, ()> {
-        unsafe {
-            let p: *mut Object = msg_send![class!(NSNumber), numberWithFloat: v];
-            (p as *mut Self).as_ref().ok_or(())
-        }
+    pub fn from_float(v: c_float) -> Result<CocoaObject<Self>, ()> {
+        unsafe { CocoaObject::from_id(msg_send![class!(NSNumber), numberWithFloat: v]) }
     }
 
     /// Creates and returns an NSNumber object containing a given value, treating it as an `unsigned int`.
-    pub fn from_uint<'a>(v: c_uint) -> Result<&'a Self, ()> {
-        unsafe {
-            let p: *mut Object = msg_send![class!(NSNumber), numberWithUnsignedInt: v];
-            (p as *mut Self).as_ref().ok_or(())
-        }
+    pub fn from_uint(v: c_uint) -> Result<CocoaObject<Self>, ()> {
+        unsafe { CocoaObject::from_id(msg_send![class!(NSNumber), numberWithUnsignedInt: v]) }
     }
 }
 
@@ -80,18 +86,19 @@ unsafe impl<K: ObjcObject, V: ObjcObject> ObjcObject for NSDictionary<K, V> {
         &mut self.0
     }
 }
-impl<K: ObjcObject, V: ObjcObject> std::ops::Deref for NSDictionary<K, V> {
+impl<K: ObjcObject, V: ObjcObject> core::ops::Deref for NSDictionary<K, V> {
     type Target = NSObject;
 
     fn deref(&self) -> &NSObject {
-        unsafe { std::mem::transmute(self) }
+        unsafe { core::mem::transmute(self) }
     }
 }
-impl<K: ObjcObject, V: ObjcObject> std::ops::DerefMut for NSDictionary<K, V> {
+impl<K: ObjcObject, V: ObjcObject> core::ops::DerefMut for NSDictionary<K, V> {
     fn deref_mut(&mut self) -> &mut NSObject {
-        unsafe { std::mem::transmute(self) }
+        unsafe { core::mem::transmute(self) }
     }
 }
+
 /// A dynamic collection of objects associated with unique keys.
 #[repr(C)]
 pub struct NSMutableDictionary<KeyType: NSCopying, ObjectType: ObjcObject>(
@@ -122,19 +129,13 @@ impl<K: NSCopying, V: ObjcObject> std::ops::DerefMut for NSMutableDictionary<K, 
 impl<KeyType: NSCopying, ObjectType: ObjcObject> NSMutableDictionary<KeyType, ObjectType> {
     /// Creates and returns a mutable dictionary, initially giving it enough allocated memory to
     /// hold a given number of entries.
-    pub fn with_capacity<'a>(cap: NSUInteger) -> Result<&'a mut Self, ()> {
-        unsafe {
-            let p: *mut Object = msg_send![class!(NSMutableDictionary), dictionaryWithCapacity: cap];
-            return (p as *mut Self).as_mut().ok_or(());
-        }
+    pub fn with_capacity(cap: NSUInteger) -> Result<CocoaObject<Self>, ()> {
+        unsafe { CocoaObject::from_id(msg_send![class!(NSMutableDictionary), dictionaryWithCapacity: cap]) }
     }
 
     /// Creates a newly allocated mutable dictionary
-    pub fn new<'a>() -> Result<&'a mut Self, ()> {
-        unsafe {
-            let p: *mut Object = msg_send![class!(NSMutableDictionary), dictionary];
-            return (p as *mut Self).as_mut().ok_or(());
-        }
+    pub fn new() -> Result<CocoaObject<Self>, ()> {
+        unsafe { CocoaObject::from_id(msg_send![class!(NSMutableDictionary), dictionary]) }
     }
 
     /// Adds a given key-value pair to the dictionary.
@@ -188,6 +189,7 @@ impl<O: ObjcObject> std::ops::DerefMut for NSArray<O> {
         unsafe { std::mem::transmute(self) }
     }
 }
+
 /// A dynamic ordered collection of objects.
 #[repr(C)]
 pub struct NSMutableArray<ObjectType: ObjcObject>(Object, PhantomData<*mut ObjectType>);
@@ -213,19 +215,13 @@ impl<O: ObjcObject> std::ops::DerefMut for NSMutableArray<O> {
 }
 impl<ObjectType: ObjcObject> NSMutableArray<ObjectType> {
     /// Creates a newly allocated array.
-    pub fn new<'a>() -> Result<&'a mut Self, ()> {
-        unsafe {
-            let p: *mut Object = msg_send![class!(NSMutableArray), array];
-            return (p as *mut Self).as_mut().ok_or(());
-        }
+    pub fn new() -> Result<CocoaObject<Self>, ()> {
+        unsafe { CocoaObject::from_id(msg_send![class!(NSMutableArray), array]) }
     }
 
     /// Creates and returns an `NSMutableArray` object with enough allocated memory to initially hold a given number of objects.
-    pub fn with_capacity<'a>(cap: NSUInteger) -> Result<&'a mut Self, ()> {
-        unsafe {
-            let p: *mut Object = msg_send![class!(NSMutableArray), arrayWithCapacity: cap];
-            return (p as *mut Self).as_mut().ok_or(());
-        }
+    pub fn with_capacity(cap: NSUInteger) -> Result<CocoaObject<Self>, ()> {
+        unsafe { CocoaObject::from_id(msg_send![class!(NSMutableArray), arrayWithCapacity: cap]) }
     }
 
     /// Inserts a given object at the end of the array.

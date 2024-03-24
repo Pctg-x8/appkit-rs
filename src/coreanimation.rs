@@ -1,7 +1,7 @@
 //! Core Animation
 
 use super::{CGFloat, CGRect};
-use crate::NSObject;
+use crate::{CocoaObject, NSObject};
 use objc::runtime::*;
 use objc_ext::ObjcObject;
 
@@ -9,7 +9,7 @@ use objc_ext::ObjcObject;
 objc_ext::DefineObjcObjectWrapper!(pub CALayer : NSObject);
 impl CALayer {
     pub fn set_contents_scale(&self, scale: CGFloat) {
-        let _: () = unsafe { msg_send![self.as_id(), setContentsScale: scale] };
+        unsafe { msg_send![self.as_id(), setContentsScale: scale] }
     }
 
     pub fn set_needs_display_on_bounds_change(&mut self, v: bool) {
@@ -28,5 +28,12 @@ impl CALayer {
     /// Sets the layer's bounds rectangle.
     pub fn set_bounds(&mut self, rect: CGRect) {
         unsafe { msg_send![self.as_id_mut(), setBounds: rect] }
+    }
+}
+
+objc_ext::DefineObjcObjectWrapper!(pub CAMetalLayer : CALayer);
+impl CAMetalLayer {
+    pub fn new() -> Result<CocoaObject<Self>, ()> {
+        unsafe { CocoaObject::from_id(msg_send![class!(CAMetalLayer), layer]) }
     }
 }

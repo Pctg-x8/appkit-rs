@@ -1,14 +1,14 @@
 //! Core Text
 
 use crate::{
-    cfrelease, cfretain, CFArray, CFArrayRef, CFAttributedString, CFAttributedStringRef, CFData, CFDataRef,
-    CFDictionary, CFDictionaryRef, CFIndex, CFRange, CFStringRef, CGAffineTransform, CGFloat, CGFont, CGFontRef,
-    CGGlyph, CGPath, CGPathRef, CGPoint, CGRect, CGSize, ExternalRc, ExternalRced, NSFont, UniChar,
+    CFArray, CFArrayRef, CFAttributedString, CFAttributedStringRef, CFData, CFDataRef, CFDictionary, CFDictionaryRef,
+    CFIndex, CFRange, CFStringRef, CGAffineTransform, CGFloat, CGFont, CGFontRef, CGGlyph, CGPath, CGPathRef, CGPoint,
+    CGRect, CGSize, CoreObject, CoreRetainedObject, ExternalRc, NSFont, UniChar,
 };
+use core::ops::Range;
+use core::ptr::{null, null_mut};
+use core::slice;
 use std::borrow::Cow;
-use std::ops::Range;
-use std::ptr::{null, null_mut};
-use std::slice;
 
 /// An opaque type represents a Core Text font object.
 pub enum CTFont {}
@@ -29,22 +29,8 @@ pub enum CTFontOrientation {
     Vertical,
 }
 
-/// toll-free bridging
-impl AsRef<CTFont> for NSFont {
-    fn as_ref(&self) -> &CTFont {
-        unsafe { ::std::mem::transmute(self) }
-    }
-}
-impl AsRef<NSFont> for CTFont {
-    fn as_ref(&self) -> &NSFont {
-        unsafe { ::std::mem::transmute(self) }
-    }
-}
-impl ExternalRced for CTFont {
-    unsafe fn own_from_unchecked(p: *mut Self) -> ExternalRc<Self> {
-        ExternalRc::with_fn(p, cfretain::<Self>, cfrelease::<Self>)
-    }
-}
+TollfreeBridge!(NSFont = CTFont);
+unsafe impl CoreObject for CTFont {}
 impl CTFont {
     /// Creates a new font reference from an existing Core Graphics font reference.
     pub fn from_cg(
@@ -52,11 +38,12 @@ impl CTFont {
         size: CGFloat,
         matrix: Option<&CGAffineTransform>,
         attributes: Option<&CTFontDescriptor>,
-    ) -> Result<ExternalRc<Self>, ()> {
-        let matrix_ref = matrix.map_or(null(), |p| p as _);
-        let attrs_ref = attributes.map_or(null_mut(), |p| p as *const _ as _);
+    ) -> Result<CoreRetainedObject<Self>, ()> {
+        let matrix_ref = matrix.map_or_else(null, |p| p as _);
+        let attrs_ref = attributes.map_or_else(null_mut, |p| p as *const _ as _);
+
         unsafe {
-            Self::own_from(CTFontCreateWithGraphicsFont(
+            CoreRetainedObject::retained_checked(CTFontCreateWithGraphicsFont(
                 graphics_font as *const _ as _,
                 size,
                 matrix_ref,
@@ -67,17 +54,16 @@ impl CTFont {
     }
     /// Returns a Core Graphics font reference.
     pub fn to_cg(&self) -> Result<ExternalRc<CGFont>, ()> {
-        unsafe { CGFont::own_from(CTFontCopyGraphicsFont(self as *const _ as _, null_mut())).ok_or(()) }
+        unsafe { ExternalRc::retained_checked(CTFontCopyGraphicsFont(self as *const _ as _, null_mut())).ok_or(()) }
     }
     /// Returns a Core Graphics font reference and attributes.
-    pub fn to_cg_with_attributes(&self) -> Result<(ExternalRc<CGFont>, ExternalRc<CTFontDescriptor>), ()> {
+    pub fn to_cg_with_attributes(&self) -> Result<(ExternalRc<CGFont>, CoreRetainedObject<CTFontDescriptor>), ()> {
         let mut attrs = null_mut();
         let font_ptr = unsafe { CTFontCopyGraphicsFont(self as *const _ as _, &mut attrs) };
-        unsafe {
-            CGFont::own_from(font_ptr)
-                .and_then(|f| CTFontDescriptor::own_from(attrs).map(move |d| (f, d)))
-                .ok_or(())
-        }
+        let f = unsafe { ExternalRc::retained_checked(font_ptr).ok_or(())? };
+        let d = unsafe { CoreRetainedObject::retained_checked(attrs).ok_or(())? };
+
+        Ok((f, d))
     }
 
     /// Returns a new font reference that best matches the given font descriptor
@@ -85,10 +71,11 @@ impl CTFont {
         descriptor: &CTFontDescriptor,
         size: CGFloat,
         matrix: Option<&CGAffineTransform>,
-    ) -> Result<ExternalRc<Self>, ()> {
+    ) -> Result<CoreRetainedObject<Self>, ()> {
         let matrix_ref = matrix.map_or_else(null, |p| p as _);
+
         unsafe {
-            Self::own_from(CTFontCreateWithFontDescriptor(
+            CoreRetainedObject::retained_checked(CTFontCreateWithFontDescriptor(
                 descriptor as *const _ as _,
                 size,
                 matrix_ref,
@@ -98,8 +85,8 @@ impl CTFont {
     }
 
     /// Returns an array of languages supported by the font.
-    pub fn supported_languages(&self) -> Result<ExternalRc<CFArray>, ()> {
-        unsafe { CFArray::own_from(CTFontCopySupportedLanguages(self as *const _ as _)).ok_or(()) }
+    pub fn supported_languages(&self) -> Result<CoreRetainedObject<CFArray>, ()> {
+        unsafe { CoreRetainedObject::retained_checked(CTFontCopySupportedLanguages(self as *const _ as _)).ok_or(()) }
     }
     /// Provides basic Unicode encoding for the given font, returning by reference an array of `CGGlyph` values
     /// corresponding to a given array of Unicode characters for the given font.
@@ -116,6 +103,7 @@ impl CTFont {
                 characters.len() as _,
             )
         };
+
         if !r {
             Err(())
         } else {
@@ -128,8 +116,9 @@ impl CTFont {
         glyph: CGGlyph,
         transform: Option<&CGAffineTransform>,
     ) -> Result<ExternalRc<CGPath>, ()> {
-        let ptf = transform.map_or(null(), |p| p as _);
-        return unsafe { CGPath::own_from(CTFontCreatePathForGlyph(self as *const _ as _, glyph, ptf)).ok_or(()) };
+        let ptf = transform.map_or_else(null, |p| p as _);
+
+        unsafe { ExternalRc::retained_checked(CTFontCreatePathForGlyph(self as *const _ as _, glyph, ptf)).ok_or(()) }
     }
 
     /// Returns a new font with additional attributes based on the original font.
@@ -138,12 +127,12 @@ impl CTFont {
         size: CGFloat,
         transform: Option<&CGAffineTransform>,
         attributes: Option<&CTFontDescriptor>,
-    ) -> Result<ExternalRc<Self>, ()> {
-        let transform_ptr = transform.map_or(null(), |p| p as _);
-        let attributes_ptr = attributes.map_or(null(), |p| p as _);
+    ) -> Result<CoreRetainedObject<Self>, ()> {
+        let transform_ptr = transform.map_or_else(null, |p| p as _);
+        let attributes_ptr = attributes.map_or_else(null, |p| p as _);
 
         unsafe {
-            Self::own_from(CTFontCreateCopyWithAttributes(
+            CoreRetainedObject::retained_checked(CTFontCreateCopyWithAttributes(
                 self as *const _ as _,
                 size,
                 transform_ptr,
@@ -153,29 +142,41 @@ impl CTFont {
         }
     }
 }
+
 /// Font Metrics
 impl CTFont {
     /// Returns the point size of the font.
+    #[inline]
     pub fn size(&self) -> CGFloat {
         unsafe { CTFontGetSize(self as *const _ as _) }
     }
+
     /// Returns the scaled font-ascent metric of the font.
+    #[inline]
     pub fn ascent(&self) -> CGFloat {
         unsafe { CTFontGetAscent(self as *const _ as _) }
     }
+
     /// Returns the scaled font-descent metric of the font.
+    #[inline]
     pub fn descent(&self) -> CGFloat {
         unsafe { CTFontGetDescent(self as *const _ as _) }
     }
+
     /// Returns the cap-height metric of the font.
+    #[inline]
     pub fn cap_height(&self) -> CGFloat {
         unsafe { CTFontGetCapHeight(self as *const _ as _) }
     }
+
     /// Returns the x-height metric of the font.
+    #[inline]
     pub fn x_height(&self) -> CGFloat {
         unsafe { CTFontGetXHeight(self as *const _ as _) }
     }
+
     /// Returns the units-per-em metric of the given font.
+    #[inline]
     pub fn units_per_em(&self) -> libc::c_uint {
         unsafe { CTFontGetUnitsPerEm(self as *const _ as _) }
     }
@@ -186,8 +187,8 @@ impl CTFont {
         orientation: CTFontOrientation,
         glyphs: &[CGGlyph],
         advances_per_glyph: Option<&mut [CGSize]>,
-    ) -> libc::c_double {
-        let sink_ptr = advances_per_glyph.map_or_else(std::ptr::null_mut, |x| {
+    ) -> core::ffi::c_double {
+        let sink_ptr = advances_per_glyph.map_or_else(null_mut, |x| {
             assert_eq!(x.len(), glyphs.len(), "mismatching count of glyphs and advances");
             x.as_mut_ptr()
         });
@@ -202,6 +203,7 @@ impl CTFont {
             )
         }
     }
+
     /// Calculates the bounding rects for an array of glyphs and
     /// returns the overall bounding rectangle for the glyph run.
     pub fn bounding_rects_for_glyphs(
@@ -210,7 +212,7 @@ impl CTFont {
         glyphs: &[CGGlyph],
         bounding_rects_per_glyph: Option<&mut [CGRect]>,
     ) -> CGRect {
-        let sink_ptr = bounding_rects_per_glyph.map_or_else(std::ptr::null_mut, |x| {
+        let sink_ptr = bounding_rects_per_glyph.map_or_else(null_mut, |x| {
             assert_eq!(x.len(), glyphs.len(), "mismatching count of glyphs and bounding rects");
             x.as_mut_ptr()
         });
@@ -231,18 +233,17 @@ impl CTFont {
 pub enum CTFontDescriptor {}
 /// A reference to a CTFontDescriptor object.
 pub type CTFontDescriptorRef = *mut CTFontDescriptor;
-impl ExternalRced for CTFontDescriptor {
-    unsafe fn own_from_unchecked(p: *mut Self) -> ExternalRc<Self> {
-        ExternalRc::with_fn(p, cfretain::<Self>, cfrelease::<Self>)
-    }
-}
+unsafe impl CoreObject for CTFontDescriptor {}
 impl CTFontDescriptor {
-    pub fn with_attributes(attributes: &CFDictionary) -> Result<ExternalRc<Self>, ()> {
-        unsafe { Self::own_from(CTFontDescriptorCreateWithAttributes(attributes as *const _ as _)).ok_or(()) }
+    pub fn with_attributes(attributes: &CFDictionary) -> Result<CoreRetainedObject<Self>, ()> {
+        unsafe {
+            CoreRetainedObject::retained_checked(CTFontDescriptorCreateWithAttributes(attributes as *const _ as _))
+                .ok_or(())
+        }
     }
 
-    pub fn from_data(d: &CFData) -> Option<ExternalRc<Self>> {
-        unsafe { Self::own_from(CTFontManagerCreateFontDescriptorFromData(d as *const _ as _)) }
+    pub fn from_data(d: &CFData) -> Option<CoreRetainedObject<Self>> {
+        unsafe { CoreRetainedObject::retained_checked(CTFontManagerCreateFontDescriptorFromData(d as *const _ as _)) }
     }
 }
 
@@ -250,15 +251,16 @@ impl CTFontDescriptor {
 pub enum CTFramesetter {}
 /// A reference to a CTFramesetter object.
 pub type CTFramesetterRef = *mut CTFramesetter;
-impl ExternalRced for CTFramesetter {
-    unsafe fn own_from_unchecked(p: *mut Self) -> ExternalRc<Self> {
-        ExternalRc::with_fn(p, cfretain::<Self>, cfrelease::<Self>)
-    }
-}
+unsafe impl CoreObject for CTFramesetter {}
 impl CTFramesetter {
     /// Creates an immutable framesetter object from an attributed string.
-    pub fn new<A: AsRef<CFAttributedString> + ?Sized>(string: &A) -> Result<ExternalRc<Self>, ()> {
-        unsafe { Self::own_from(CTFramesetterCreateWithAttributedString(string.as_ref() as *const _ as _)).ok_or(()) }
+    pub fn new(string: &(impl AsRef<CFAttributedString> + ?Sized)) -> Result<CoreRetainedObject<Self>, ()> {
+        unsafe {
+            CoreRetainedObject::retained_checked(CTFramesetterCreateWithAttributedString(
+                string.as_ref() as *const _ as _
+            ))
+            .ok_or(())
+        }
     }
 
     /// Determines the frame size needed for a string range.
@@ -268,8 +270,8 @@ impl CTFramesetter {
         attrs: Option<&CFDictionary>,
         constraints: CGSize,
     ) -> (CGSize, CFRange) {
-        let mut fit_range = std::mem::MaybeUninit::uninit();
-        let frame_attrs = attrs.map_or(null_mut(), |p| p as *const _ as _);
+        let mut fit_range = core::mem::MaybeUninit::uninit();
+        let frame_attrs = attrs.map_or_else(null_mut, |p| p as *const _ as _);
         let size = unsafe {
             CTFramesetterSuggestFrameSizeWithConstraints(
                 self as *const _ as _,
@@ -279,30 +281,21 @@ impl CTFramesetter {
                 fit_range.as_mut_ptr(),
             )
         };
-        return (size, unsafe { fit_range.assume_init() });
-    }
-}
 
-/// Represents a frame containing multiple lines of text.
-pub enum CTFrame {}
-/// A reference to a Core Text frame object.
-pub type CTFrameRef = *mut CTFrame;
-impl ExternalRced for CTFrame {
-    unsafe fn own_from_unchecked(p: *mut Self) -> ExternalRc<Self> {
-        ExternalRc::with_fn(p, cfretain::<Self>, cfrelease::<Self>)
+        (size, unsafe { fit_range.assume_init() })
     }
-}
-impl CTFramesetter {
+
     /// Creates an immutable frame using a framesetter.
     pub fn create_frame(
         &self,
         str_range: impl Into<CFRange>,
         path: &CGPath,
         attributes: Option<&CFDictionary>,
-    ) -> Result<ExternalRc<CTFrame>, ()> {
-        let a = attributes.map_or(null_mut(), |p| p as *const _ as _);
+    ) -> Result<CoreRetainedObject<CTFrame>, ()> {
+        let a = attributes.map_or_else(null_mut, |p| p as *const _ as _);
+
         unsafe {
-            CTFrame::own_from(CTFramesetterCreateFrame(
+            CoreRetainedObject::retained_checked(CTFramesetterCreateFrame(
                 self as *const _ as _,
                 str_range.into(),
                 path as *const _ as _,
@@ -313,10 +306,11 @@ impl CTFramesetter {
     }
 }
 
-/// Represents a line of text.
-pub enum CTLine {}
-/// A reference to a line object.
-pub type CTLineRef = *mut CTLine;
+/// Represents a frame containing multiple lines of text.
+pub enum CTFrame {}
+/// A reference to a Core Text frame object.
+pub type CTFrameRef = *mut CTFrame;
+unsafe impl CoreObject for CTFrame {}
 impl CTFrame {
     /// Returns an array of lines stored in the frame.
     pub fn lines(&self) -> Result<&CFArray, ()> {
@@ -332,7 +326,20 @@ impl CTFrame {
         unsafe {
             CTFrameGetLineOrigins(self as *const _ as _, range.into(), v.as_mut_ptr());
         }
-        return v;
+
+        v
+    }
+}
+
+/// Represents a line of text.
+pub enum CTLine {}
+/// A reference to a line object.
+pub type CTLineRef = *mut CTLine;
+unsafe impl CoreObject for CTLine {}
+impl CTLine {
+    /// Returns the array of glyph runs that make up the line object.
+    pub fn runs(&self) -> Result<&CFArray, ()> {
+        unsafe { CTLineGetGlyphRuns(self as *const _ as _).as_ref().ok_or(()) }
     }
 }
 
@@ -340,12 +347,7 @@ impl CTFrame {
 pub enum CTRun {}
 /// A reference to a run object.
 pub type CTRunRef = *mut CTRun;
-impl CTLine {
-    /// Returns the array of glyph runs that make up the line object.
-    pub fn runs(&self) -> Result<&CFArray, ()> {
-        unsafe { CTLineGetGlyphRuns(self as *const _ as _).as_ref().ok_or(()) }
-    }
-}
+unsafe impl CoreObject for CTRun {}
 impl CTRun {
     /// Gets the glyph count for the run.
     pub fn glyph_count(&self) -> CFIndex {
@@ -361,18 +363,20 @@ impl CTRun {
         unsafe {
             CTRunGetGlyphs(self as *const _ as _, range.into(), v.as_mut_ptr());
         }
-        return v;
+
+        v
     }
 
     /// Returns a slice of a direct pointer for the glyph array stored in the run.
     pub fn glyph_ptr(&self) -> Option<&[CGGlyph]> {
         let count = self.glyph_count();
         let p = unsafe { CTRunGetGlyphsPtr(self as *const _ as _) };
-        return if p.is_null() {
+
+        if p.is_null() {
             None
         } else {
             Some(unsafe { slice::from_raw_parts(p, count as _) })
-        };
+        }
     }
 
     /// Copies a range of glyph positions and returns an owned buffer filled by `CTRunGetGlyphs`.
@@ -384,23 +388,25 @@ impl CTRun {
         unsafe {
             CTRunGetPositions(self as *const _ as _, range.into(), v.as_mut_ptr());
         }
-        return v;
+
+        v
     }
 
     /// Returns a slice of a direct pointer for the glyph position array stored in the run.
-    pub fn position_ptr(&self) -> Option<&[CGPoint]> {
+    pub fn positions_ptr(&self) -> Option<&[CGPoint]> {
         let count = self.glyph_count();
         let p = unsafe { CTRunGetPositionsPtr(self as *const _ as _) };
-        return if p.is_null() {
+
+        if p.is_null() {
             None
         } else {
             Some(unsafe { slice::from_raw_parts(p, count as _) })
-        };
+        }
     }
 
     /// Returns the attribute dictionary that was used to create the glyph run.
     pub fn attributes(&self) -> Result<&CFDictionary, ()> {
-        unsafe { (CTRunGetAttributes(self as *const _ as _)).as_ref().ok_or(()) }
+        unsafe { CTRunGetAttributes(self as *const _ as _).as_ref().ok_or(()) }
     }
 
     /// Gets or Copies glyphs:
@@ -414,7 +420,7 @@ impl CTRun {
     /// Gets or Copies glyph positions relative to origin of the line:
     /// Equivalent to `self.position_ptr().map(Cow::from).unwrap_or_else(|| Cow::from(self.positions(0 .. self.glyph_count())))`
     pub fn glyph_rel_positions(&self) -> Cow<[CGPoint]> {
-        self.position_ptr()
+        self.positions_ptr()
             .map(Cow::from)
             .unwrap_or_else(|| Cow::from(self.positions(0..self.glyph_count())))
     }

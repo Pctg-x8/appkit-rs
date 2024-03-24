@@ -9,12 +9,13 @@ extern crate bitflags;
 objc_ext::DefineObjcObjectWrapper!(pub NSObject);
 impl NSObject {
     pub fn retain(&self) -> *mut Self {
-        let p: *mut Object = unsafe { msg_send![&self.0, retain] };
-        return p as *mut Self;
+        let p: *mut Object = unsafe { msg_send![self.as_id(), retain] };
+
+        p as *mut Self
     }
 
     pub fn release(&self) {
-        let _: () = unsafe { msg_send![&self.0, release] };
+        let _: () = unsafe { msg_send![self.as_id(), release] };
     }
 }
 
@@ -31,23 +32,27 @@ pub type NSUInteger = u32;
 macro_rules! TollfreeBridge {
     ($a: ty = $b: ty) => {
         impl AsRef<$a> for $b {
+            #[inline(always)]
             fn as_ref(&self) -> &$a {
-                unsafe { ::std::mem::transmute(self) }
+                unsafe { core::mem::transmute(self) }
             }
         }
         impl AsMut<$a> for $b {
+            #[inline(always)]
             fn as_mut(&mut self) -> &mut $a {
-                unsafe { ::std::mem::transmute(self) }
+                unsafe { core::mem::transmute(self) }
             }
         }
         impl AsRef<$b> for $a {
+            #[inline(always)]
             fn as_ref(&self) -> &$b {
-                unsafe { ::std::mem::transmute(self) }
+                unsafe { core::mem::transmute(self) }
             }
         }
         impl AsMut<$b> for $a {
+            #[inline(always)]
             fn as_mut(&mut self) -> &mut $b {
-                unsafe { ::std::mem::transmute(self) }
+                unsafe { core::mem::transmute(self) }
             }
         }
     };
@@ -77,71 +82,72 @@ use objc_ext::ObjcObject;
 use std::borrow::{Borrow, BorrowMut, Cow, ToOwned};
 use std::ops::{Deref, DerefMut};
 
-pub struct ExternalRc<T> {
-    ptr: *mut T,
-    retain: unsafe extern "system" fn(*mut T) -> *mut T,
-    release: unsafe extern "system" fn(*mut T),
+pub trait ExternalRefcounted: Sized {
+    unsafe fn retain(ptr: *mut Self) -> *mut Self;
+    unsafe fn release(ptr: *mut Self);
 }
-impl<T> Deref for ExternalRc<T> {
+
+#[repr(transparent)]
+pub struct ExternalRc<T: ExternalRefcounted>(core::ptr::NonNull<T>);
+impl<T: ExternalRefcounted> ExternalRc<T> {
+    pub fn try_retain(&self) -> Option<Self> {
+        core::ptr::NonNull::new(unsafe { T::retain(self.0.as_ptr()) }).map(Self)
+    }
+}
+impl<T: ExternalRefcounted> Deref for ExternalRc<T> {
     type Target = T;
-    fn deref(&self) -> &T {
-        unsafe { &*self.ptr }
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.0.as_ref() }
     }
 }
-impl<T> DerefMut for ExternalRc<T> {
-    fn deref_mut(&mut self) -> &mut T {
-        unsafe { &mut *self.ptr }
+impl<T: ExternalRefcounted> DerefMut for ExternalRc<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { self.0.as_mut() }
     }
 }
-impl<T> Drop for ExternalRc<T> {
+impl<T: ExternalRefcounted> Drop for ExternalRc<T> {
     fn drop(&mut self) {
         unsafe {
-            (self.release)(self.ptr);
+            T::release(self.0.as_ptr());
         }
     }
 }
-impl<T> Clone for ExternalRc<T> {
+impl<T: ExternalRefcounted> Clone for ExternalRc<T> {
     fn clone(&self) -> Self {
-        let new = unsafe { (self.retain)(self.ptr) };
-        if new.is_null() {
-            panic!("Retaining reference counted object");
-        }
-        return ExternalRc {
-            ptr: self.ptr,
-            retain: self.retain,
-            release: self.release,
-        };
+        self.try_retain().expect("Retaining reference counted object")
     }
 }
-impl<T> ExternalRc<T> {
-    pub(crate) unsafe fn with_fn(
-        ptr: *mut T,
-        retain: unsafe extern "system" fn(*mut T) -> *mut T,
-        release: unsafe extern "system" fn(*mut T),
-    ) -> Self {
-        ExternalRc { ptr, retain, release }
+impl<T: ExternalRefcounted> ExternalRc<T> {
+    pub(crate) unsafe fn retained(p: core::ptr::NonNull<T>) -> Self {
+        Self(p)
+    }
+
+    pub(crate) unsafe fn retained_checked(p: *mut T) -> Option<Self> {
+        core::ptr::NonNull::new(p).map(Self)
     }
 }
-pub trait ExternalRced: Sized {
-    unsafe fn own_from_unchecked(p: *mut Self) -> ExternalRc<Self>;
-    unsafe fn own_from(p: *mut Self) -> Option<ExternalRc<Self>> {
-        if p.is_null() {
-            None
-        } else {
-            Some(Self::own_from_unchecked(p))
-        }
+impl<T: ExternalRefcounted> AsRef<T> for ExternalRc<T> {
+    fn as_ref(&self) -> &T {
+        unsafe { self.0.as_ref() }
+    }
+}
+impl<T: ExternalRefcounted> AsMut<T> for ExternalRc<T> {
+    fn as_mut(&mut self) -> &mut T {
+        unsafe { self.0.as_mut() }
     }
 }
 
 use objc::runtime::Object;
-pub struct CocoaObject<T: ObjcObject>(*mut T);
+pub struct CocoaObject<T: ObjcObject>(core::ptr::NonNull<T>);
 impl<T: ObjcObject> Clone for CocoaObject<T> {
     fn clone(&self) -> Self {
         let p: *mut Object = unsafe { msg_send![self.id(), retain] };
         if p.is_null() {
             panic!("Retaining reference counted object");
         }
-        return CocoaObject(self.0);
+
+        CocoaObject(self.0)
     }
 }
 impl<T: ObjcObject> Drop for CocoaObject<T> {
@@ -151,59 +157,60 @@ impl<T: ObjcObject> Drop for CocoaObject<T> {
 }
 impl<T: ObjcObject> CocoaObject<T> {
     pub fn id(&self) -> *mut Object {
-        self.0 as *mut _
+        self.0.as_ptr() as _
     }
     pub fn into_id(self) -> *mut Object {
         let id = self.id();
-        std::mem::forget(self);
-        return id;
+        // no drop executes
+        core::mem::forget(self);
+
+        id
     }
     pub fn retain(obj: *mut T) -> Result<Self, ()> {
         unsafe { Self::from_id(msg_send![obj as *mut Object, retain]) }
     }
     /// Occurs null checking
     pub unsafe fn from_id(id: *mut Object) -> Result<Self, ()> {
-        if id.is_null() {
-            Err(())
-        } else {
-            Ok(Self::from_id_unchecked(id))
-        }
+        core::ptr::NonNull::new(id as _).map(Self).ok_or(())
     }
     pub unsafe fn from_id_unchecked(id: *mut Object) -> Self {
-        CocoaObject(id as _)
+        CocoaObject(core::ptr::NonNull::new_unchecked(id as _))
     }
 }
 impl<T: ObjcObject> Deref for CocoaObject<T> {
     type Target = T;
     fn deref(&self) -> &T {
-        unsafe { &*self.0 }
+        unsafe { self.0.as_ref() }
     }
 }
 impl<T: ObjcObject> DerefMut for CocoaObject<T> {
     fn deref_mut(&mut self) -> &mut T {
-        unsafe { &mut *self.0 }
+        unsafe { self.0.as_mut() }
     }
 }
 impl<T: ObjcObject> Borrow<T> for CocoaObject<T> {
     fn borrow(&self) -> &T {
-        &**self
+        unsafe { self.0.as_ref() }
     }
 }
 impl<T: ObjcObject> BorrowMut<T> for CocoaObject<T> {
     fn borrow_mut(&mut self) -> &mut T {
-        &mut **self
-    }
-}
-impl ToOwned for NSString {
-    type Owned = CocoaObject<Self>;
-    fn to_owned(&self) -> Self::Owned {
-        unsafe { std::mem::transmute::<_, &CocoaObject<Self>>(self).clone() }
+        unsafe { self.0.as_mut() }
     }
 }
 impl ToOwned for NSMenuItem {
     type Owned = CocoaObject<Self>;
     fn to_owned(&self) -> Self::Owned {
         unsafe { std::mem::transmute::<_, &CocoaObject<Self>>(self).clone() }
+    }
+}
+unsafe impl<T: ObjcObject> ObjcObject for CocoaObject<T> {
+    fn as_id(&self) -> &objc::runtime::Object {
+        T::as_id(unsafe { self.0.as_ref() })
+    }
+
+    fn as_id_mut(&mut self) -> &mut objc::runtime::Object {
+        T::as_id_mut(unsafe { self.0.as_mut() })
     }
 }
 

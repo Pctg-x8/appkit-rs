@@ -1,27 +1,25 @@
 //! AppKit bindings
 
 use crate::{
-    CALayer, CGColor, CGColorRef, CGFloat, CGRect, CGSize, CocoaObject, CocoaString, NSInteger, NSObject, NSString,
-    NSUInteger,
+    CALayer, CGColor, CGColorRef, CGFloat, CGPoint, CGRect, CGSize, CocoaObject, CocoaString, NSInteger, NSObject,
+    NSString, NSUInteger,
 };
 use objc::runtime::*;
 use objc_ext::ObjcObject;
 use std::mem::zeroed;
 
-/*#[cfg(feature = "with_ferrite")]
-type NSRunLoopMode = *mut Object;*/
-#[cfg(feature = "with_ferrite")]
-#[cfg(not(feature = "manual_rendering"))]
-pub type CVOptionFlags = u64;
+type NSRunLoopMode = *mut Object;
+
 #[link(name = "AppKit", kind = "framework")]
 extern "system" {
+    #[allow(improper_ctypes)]
     pub static NSFontAttributeName: *mut NSString;
 }
-/*#[cfg(feature = "with_ferrite")]
-#[link(name = "Foundation", kind = "framework")] extern "system"
-{
+
+#[link(name = "Foundation", kind = "framework")]
+extern "system" {
     pub static NSDefaultRunLoopMode: NSRunLoopMode;
-}*/
+}
 
 pub type NSSize = CGSize;
 pub type NSRect = CGRect;
@@ -70,25 +68,46 @@ impl NSApplication {
         unsafe { (p as *const Self).as_ref() }
     }
 
+    pub fn shared_mut() -> Option<&'static mut Self> {
+        let p: *mut Object = unsafe { msg_send![class!(NSApplication), sharedApplication] };
+        unsafe { (p as *mut Self).as_mut() }
+    }
+
     pub fn set_activation_policy(&self, policy: NSApplicationActivationPolicy) -> bool {
-        let b: BOOL = unsafe { msg_send![&self.0, setActivationPolicy: policy as NSInteger] };
+        let b: BOOL = unsafe { msg_send![self.as_id(), setActivationPolicy: policy as NSInteger] };
         b == YES
     }
 
     pub fn run(&self) {
-        unsafe { msg_send![&self.0, run] }
+        unsafe { msg_send![self.as_id(), run] }
+    }
+
+    pub fn stop(&self, sender: &objc::runtime::Object) {
+        unsafe { msg_send![self.as_id(), stop:sender] }
     }
 
     pub fn activate_ignoring_other_apps(&self) {
-        unsafe { msg_send![&self.0, activateIgnoringOtherApps: YES] }
+        unsafe { msg_send![self.as_id(), activateIgnoringOtherApps: YES] }
     }
 
     pub fn set_delegate(&self, delegate: &Object) {
-        unsafe { msg_send![&self.0, setDelegate: delegate] }
+        unsafe { msg_send![self.as_id(), setDelegate: delegate] }
     }
 
-    pub fn set_main_menu(&self, menu: &NSMenu) {
-        let _: () = unsafe { msg_send![&self.0, setMainMenu: &menu.0] };
+    pub fn set_main_menu(&mut self, menu: &NSMenu) {
+        unsafe { msg_send![self.as_id_mut(), setMainMenu: menu.as_id()] }
+    }
+
+    pub fn reply_to_application_should_terminate(&self, should_terminate: bool) {
+        unsafe {
+            msg_send![self.as_id(), replyToApplicationShouldTerminate:if should_terminate { objc::runtime::YES } else { objc::runtime::NO }]
+        }
+    }
+
+    pub fn post_event(&self, event: &NSEvent, at_start: bool) {
+        unsafe {
+            msg_send![self.as_id(), postEvent: event.as_id() atStart: if at_start { objc::runtime::YES } else { objc::runtime::NO }]
+        }
     }
 }
 
@@ -115,27 +134,43 @@ impl NSWindow {
     }
 
     pub fn center(&self) {
-        unsafe { msg_send![&self.0, center] }
+        unsafe { msg_send![self.as_id(), center] }
     }
 
-    pub fn make_key_and_order_front(&self, sender: &Object) {
-        unsafe { msg_send![&self.0, makeKeyAndOrderFront: sender] }
+    pub fn make_key_and_order_front(&self, sender: &(impl ObjcObject + ?Sized)) {
+        unsafe { msg_send![self.as_id(), makeKeyAndOrderFront: sender.as_id()] }
     }
 
-    pub fn set_title<Title: CocoaString + ?Sized>(&self, title: &Title) {
-        unsafe { msg_send![&self.0, setTitle: title.to_nsstring().id()] }
+    pub fn make_main_window(&self) {
+        unsafe { msg_send![self.as_id(), makeMainWindow] }
+    }
+
+    pub fn set_title(&self, title: &(impl CocoaString + ?Sized)) {
+        unsafe { msg_send![self.as_id(), setTitle: title.to_nsstring().id()] }
     }
 
     pub fn set_alpha_value(&self, a: CGFloat) {
-        unsafe { msg_send![&self.0, setAlphaValue: a] }
+        unsafe { msg_send![self.as_id(), setAlphaValue: a] }
     }
 
     pub fn set_background_color(&self, bg: &NSColor) {
-        let _: () = unsafe { msg_send![&self.0, setBackgroundColor: &bg.0] };
+        let _: () = unsafe { msg_send![self.as_id(), setBackgroundColor: bg.as_id()] };
     }
 
     pub fn set_opaque(&self, op: bool) {
-        unsafe { msg_send![&self.0, setOpaque: if op { YES } else { NO }] }
+        unsafe { msg_send![self.as_id(), setOpaque: if op { YES } else { NO }] }
+    }
+
+    pub fn content_view(&self) -> &NSView {
+        unsafe { msg_send![self.as_id(), contentView] }
+    }
+
+    pub fn content_view_mut(&mut self) -> &mut NSView {
+        unsafe { msg_send![self.as_id_mut(), contentView] }
+    }
+
+    pub fn set_content_view(&mut self, content_view: &NSView) {
+        unsafe { msg_send![self.as_id_mut(), setContentView: content_view.as_id()] }
     }
 }
 
@@ -143,28 +178,25 @@ impl NSWindow {
 objc_ext::DefineObjcObjectWrapper!(pub NSMenu : NSObject);
 impl NSMenu {
     pub fn new() -> Result<CocoaObject<Self>, ()> {
-        unsafe { CocoaObject::from_id(msg_send![Class::get("NSMenu").unwrap(), new]) }
+        unsafe { CocoaObject::from_id(msg_send![class!(NSMenu), new]) }
     }
     /// Adds a menu item to the end of the menu.
     pub fn add(&mut self, item: &NSMenuItem) -> &mut Self {
-        let _: () = unsafe { msg_send![&self.0, addItem: &item.0] };
-        return self;
+        let _: () = unsafe { msg_send![self.as_id(), addItem: item.as_id()] };
+        self
     }
     /// Creates a new menu item and adds it to the end of the menu.
-    pub fn add_new_item<T>(
+    pub fn add_new_item(
         &mut self,
-        title: &T,
+        title: &(impl CocoaString + ?Sized),
         action: Option<Sel>,
         key_equivalent: Option<&NSString>,
-    ) -> Result<&mut NSMenuItem, ()>
-    where
-        T: CocoaString + ?Sized,
-    {
+    ) -> Result<&mut NSMenuItem, ()> {
         let (title, action) = (title.to_nsstring(), action.unwrap_or(unsafe { zeroed() }));
         let k = key_equivalent.unwrap_or_else(|| NSString::empty());
 
         let item: *mut Object = unsafe {
-            msg_send![&self.0, addItemWithTitle: title.id() action: action keyEquivalent: &k as *const _ as *const Object]
+            msg_send![self.as_id(), addItemWithTitle: title.id() action: action keyEquivalent: k as *const _ as *const Object]
         };
         let item = item as *mut NSMenuItem;
         unsafe { item.as_mut().ok_or(()) }
@@ -175,6 +207,7 @@ objc_ext::DefineObjcObjectWrapper!(pub NSMenuItem : NSObject);
 impl NSMenuItem {
     fn alloc() -> Result<*mut Object, ()> {
         let p: *mut Object = unsafe { msg_send![class!(NSMenuItem), alloc] };
+
         if p.is_null() {
             Err(())
         } else {
@@ -190,6 +223,7 @@ impl NSMenuItem {
     ) -> Result<CocoaObject<Self>, ()> {
         let (title, action) = (title.to_nsstring(), action.unwrap_or(unsafe { zeroed() }));
         let k = key_equivalent.unwrap_or_else(|| NSString::empty());
+
         unsafe {
             CocoaObject::from_id(msg_send![Self::alloc()?,
                 initWithTitle: title.id() action: action keyEquivalent: k.as_id()])
@@ -197,46 +231,52 @@ impl NSMenuItem {
     }
 
     /// Returns a menu item that is used to separate logical groups of menu commands.
-    pub fn separator() -> Result<CocoaObject<Self>, ()> {
+    pub fn separator() -> Result<&'static Self, ()> {
         let p: *mut Object = unsafe { msg_send![class!(NSMenuItem), separatorItem] };
         if p.is_null() {
             return Err(());
         }
-        unsafe { CocoaObject::from_id(msg_send![p, retain]) }
+
+        Ok(unsafe { &*(p as *const _) })
     }
 
     /// Sets the submenu of the menu item.
-    pub fn set_submenu(&self, sub: &NSMenu) -> &Self {
-        let _: () = unsafe { msg_send![&self.0, setSubmenu: &sub.0] };
-        return self;
+    pub fn set_submenu(&mut self, sub: &NSMenu) -> &mut Self {
+        let _: () = unsafe { msg_send![self.as_id_mut(), setSubmenu: sub.as_id()] };
+
+        self
     }
 
     /// Sets the menu item's target.
-    pub fn set_target(&self, target: *mut Object) -> &Self {
-        let _: () = unsafe { msg_send![&self.0, setTarget: target] };
-        return self;
+    pub fn set_target(&mut self, target: &(impl ObjcObject + ?Sized)) -> &mut Self {
+        let _: () = unsafe { msg_send![self.as_id_mut(), setTarget: target.as_id()] };
+
+        self
     }
 
     /// Sets the menu item's unmodified key equivalent.
-    pub fn set_key_equivalent_modifier_mask(&self, mods: NSEventModifierFlags) -> &Self {
-        let _: () = unsafe { msg_send![&self.0, setKeyEquivalentModifierMask: mods.bits] };
-        return self;
+    pub fn set_key_equivalent_modifier_mask(&mut self, mods: NSEventModifierFlags) -> &mut Self {
+        let _: () = unsafe { msg_send![self.as_id_mut(), setKeyEquivalentModifierMask: mods.bits] };
+
+        self
     }
 
     /// Sets the menu item's keyboard equivalent modifiers.
-    pub fn set_key_equivalent(&self, k: &(impl CocoaString + ?Sized)) -> &Self {
-        let _: () = unsafe { msg_send![&self.0, setKeyEquivalent: k.to_nsstring().id()] };
-        return self;
+    pub fn set_key_equivalent(&mut self, k: &(impl CocoaString + ?Sized)) -> &mut Self {
+        let _: () = unsafe { msg_send![self.as_id_mut(), setKeyEquivalent: k.to_nsstring().id()] };
+
+        self
     }
 
     /// Sets the menu item's key equivalents with modifiers.
-    pub fn set_accelerator(&self, mods: NSEventModifierFlags, key: &(impl CocoaString + ?Sized)) -> &Self {
+    pub fn set_accelerator(&mut self, mods: NSEventModifierFlags, key: &(impl CocoaString + ?Sized)) -> &mut Self {
         self.set_key_equivalent(key).set_key_equivalent_modifier_mask(mods)
     }
 
     /// Sets the menu item's action-method selector.
-    pub fn set_action(&self, sel: Sel) -> &Self {
-        let _: () = unsafe { msg_send![&self.0, setAction: sel] };
+    pub fn set_action(&mut self, sel: Sel) -> &mut Self {
+        let _: () = unsafe { msg_send![self.as_id_mut(), setAction: sel] };
+
         self
     }
 }
@@ -257,8 +297,8 @@ impl NSView {
     }
 
     /// Sets the Core Animation layer that the view uses as its backing store.
-    pub fn set_layer(&mut self, layer: *mut Object) {
-        unsafe { msg_send![self.as_id_mut(), setLayer: layer] }
+    pub fn set_layer(&mut self, layer: &(impl ObjcObject + ?Sized)) {
+        unsafe { msg_send![self.as_id_mut(), setLayer: layer.as_id()] }
     }
 
     /// Sets a boolean value indicating whether the view uses a layer as its backing store.
@@ -288,7 +328,7 @@ impl NSView {
 
     /// Converts a size from the view's interior coordinate system to its pixel aligned backing store coordinate system.
     pub fn convert_size_to_backing(&self, size: &NSSize) -> NSSize {
-        unsafe { msg_send![self.as_id(), convertSizeToBacking:size.clone()] }
+        unsafe { msg_send![self.as_id(), convertSizeToBacking: size.clone()] }
     }
 
     /// Sets a boolean value indicating whether the view fills its frame rectangle with opaque content.
@@ -446,3 +486,30 @@ impl NSScreen {
 }
 
 objc_ext::DefineObjcObjectWrapper!(pub NSResponder : NSObject);
+
+#[repr(C)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum NSEventType {
+    ApplicationDefined = 15,
+}
+pub type NSTimeInterval = core::ffi::c_double;
+objc_ext::DefineObjcObjectWrapper!(pub NSEvent : NSObject);
+impl NSEvent {
+    pub fn new_other_event(
+        ty: NSEventType,
+        location: CGPoint,
+        modifier_flags: NSEventModifierFlags,
+        timestamp: NSTimeInterval,
+        window_number: NSInteger,
+        context: Option<&objc::runtime::Object>,
+        subtype: core::ffi::c_short,
+        data1: NSInteger,
+        data2: NSInteger,
+    ) -> Result<CocoaObject<Self>, ()> {
+        unsafe {
+            CocoaObject::from_id(
+                msg_send![class!(NSEvent), otherEventWithType: ty as NSUInteger location: location modifierFlags: modifier_flags.bits() timestamp: timestamp windowNumber: window_number context: context subtype: subtype data1: data1 data2: data2],
+            )
+        }
+    }
+}
