@@ -140,6 +140,8 @@ impl<T: ExternalRefcounted> AsMut<T> for ExternalRc<T> {
 
 use objc::runtime::Object;
 pub struct CocoaObject<T: ObjcObject>(core::ptr::NonNull<T>);
+unsafe impl<T: ObjcObject + Sync> Sync for CocoaObject<T> {}
+unsafe impl<T: ObjcObject + Send> Send for CocoaObject<T> {}
 impl<T: ObjcObject> Clone for CocoaObject<T> {
     fn clone(&self) -> Self {
         let p: *mut Object = unsafe { msg_send![self.id(), retain] };

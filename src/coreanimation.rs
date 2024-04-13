@@ -32,6 +32,8 @@ impl CALayer {
 }
 
 objc_ext::DefineObjcObjectWrapper!(pub CAMetalLayer : CALayer);
+unsafe impl Sync for CAMetalLayer {}
+unsafe impl Send for CAMetalLayer {}
 impl CAMetalLayer {
     pub fn new() -> Result<CocoaObject<Self>, ()> {
         unsafe { CocoaObject::from_id(msg_send![class!(CAMetalLayer), layer]) }
