@@ -6,6 +6,31 @@ extern crate libc;
 #[macro_use]
 extern crate bitflags;
 
+// strictly defined ffi object: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
+macro_rules! DefineOpaqueFFIObject {
+    ($(#[$a: meta])* $v: vis struct $name: ident) => {
+        #[repr(C)]
+        $(#[$a])*
+        $v struct $name([u8; 0], core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>);
+    };
+    { $(#[$a: meta])* $v: vis struct $name: ident; } => {
+        #[repr(C)]
+        $(#[$a])*
+        $v struct $name([u8; 0], core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>);
+    }
+}
+
+macro_rules! DefineCoreObject {
+    ($(#[$a: meta])* $v: vis $name: ident) => {
+        DefineOpaqueFFIObject!($(#[$a])* $v struct $name);
+        unsafe impl CoreObject for $name {}
+    };
+    { $(#[$a: meta])* $v: vis $name: ident; } => {
+        DefineOpaqueFFIObject!($(#[$a])* $v struct $name);
+        unsafe impl $crate::corefoundation::CoreObject for $name {}
+    };
+}
+
 objc_ext::DefineObjcObjectWrapper!(pub NSObject);
 impl NSObject {
     pub fn retain(&self) -> *mut Self {
@@ -30,7 +55,7 @@ pub type NSUInteger = u32;
 
 /// Declares toll-free bridge
 macro_rules! TollfreeBridge {
-    ($a: ty = $b: ty) => {
+    (mut $a: ty = $b: ty) => {
         impl AsRef<$a> for $b {
             #[inline(always)]
             fn as_ref(&self) -> &$a {
@@ -52,6 +77,20 @@ macro_rules! TollfreeBridge {
         impl AsMut<$b> for $a {
             #[inline(always)]
             fn as_mut(&mut self) -> &mut $b {
+                unsafe { core::mem::transmute(self) }
+            }
+        }
+    };
+    ($a: ty = $b: ty) => {
+        impl AsRef<$a> for $b {
+            #[inline(always)]
+            fn as_ref(&self) -> &$a {
+                unsafe { core::mem::transmute(self) }
+            }
+        }
+        impl AsRef<$b> for $a {
+            #[inline(always)]
+            fn as_ref(&self) -> &$b {
                 unsafe { core::mem::transmute(self) }
             }
         }
@@ -82,63 +121,8 @@ use objc_ext::ObjcObject;
 use std::borrow::{Borrow, BorrowMut, Cow, ToOwned};
 use std::ops::{Deref, DerefMut};
 
-pub trait ExternalRefcounted: Sized {
-    unsafe fn retain(ptr: *mut Self) -> *mut Self;
-    unsafe fn release(ptr: *mut Self);
-}
-
-#[repr(transparent)]
-pub struct ExternalRc<T: ExternalRefcounted>(core::ptr::NonNull<T>);
-impl<T: ExternalRefcounted> ExternalRc<T> {
-    pub fn try_retain(&self) -> Option<Self> {
-        core::ptr::NonNull::new(unsafe { T::retain(self.0.as_ptr()) }).map(Self)
-    }
-}
-impl<T: ExternalRefcounted> Deref for ExternalRc<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe { self.0.as_ref() }
-    }
-}
-impl<T: ExternalRefcounted> DerefMut for ExternalRc<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { self.0.as_mut() }
-    }
-}
-impl<T: ExternalRefcounted> Drop for ExternalRc<T> {
-    fn drop(&mut self) {
-        unsafe {
-            T::release(self.0.as_ptr());
-        }
-    }
-}
-impl<T: ExternalRefcounted> Clone for ExternalRc<T> {
-    fn clone(&self) -> Self {
-        self.try_retain().expect("Retaining reference counted object")
-    }
-}
-impl<T: ExternalRefcounted> ExternalRc<T> {
-    pub(crate) unsafe fn retained(p: core::ptr::NonNull<T>) -> Self {
-        Self(p)
-    }
-
-    pub(crate) unsafe fn retained_checked(p: *mut T) -> Option<Self> {
-        core::ptr::NonNull::new(p).map(Self)
-    }
-}
-impl<T: ExternalRefcounted> AsRef<T> for ExternalRc<T> {
-    fn as_ref(&self) -> &T {
-        unsafe { self.0.as_ref() }
-    }
-}
-impl<T: ExternalRefcounted> AsMut<T> for ExternalRc<T> {
-    fn as_mut(&mut self) -> &mut T {
-        unsafe { self.0.as_mut() }
-    }
-}
-
 use objc::runtime::Object;
+
 pub struct CocoaObject<T: ObjcObject>(core::ptr::NonNull<T>);
 unsafe impl<T: ObjcObject + Sync> Sync for CocoaObject<T> {}
 unsafe impl<T: ObjcObject + Send> Send for CocoaObject<T> {}
@@ -250,5 +234,19 @@ impl From<std::ops::Range<NSUInteger>> for NSRange {
             location: r.start,
             length: r.end - r.start,
         }
+    }
+}
+
+const fn opt_pointer<T>(opt: Option<&T>) -> *const T {
+    match opt {
+        Some(r) => r as *const _,
+        None => core::ptr::null(),
+    }
+}
+
+const fn opt_pointer_mut<T>(opt: Option<&mut T>) -> *mut T {
+    match opt {
+        Some(r) => r as *mut _,
+        None => core::ptr::null_mut(),
     }
 }
