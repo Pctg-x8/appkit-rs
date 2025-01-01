@@ -1,10 +1,9 @@
 //! CoreFoundation/Cocoa Framework
 
-#[macro_use]
-extern crate objc;
-extern crate libc;
-#[macro_use]
-extern crate bitflags;
+use objc::{msg_send, runtime::Object, sel, sel_impl};
+use objc_ext::ObjcObject;
+
+use std::borrow::ToOwned;
 
 // strictly defined ffi object: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
 macro_rules! DefineOpaqueFFIObject {
@@ -33,14 +32,15 @@ macro_rules! DefineCoreObject {
 
 objc_ext::DefineObjcObjectWrapper!(pub NSObject);
 impl NSObject {
+    #[inline(always)]
     pub fn retain(&self) -> *mut Self {
-        let p: *mut Object = unsafe { msg_send![self.as_id(), retain] };
-
+        let p: *mut Object = unsafe { msg_send![self, retain] };
         p as *mut Self
     }
 
+    #[inline(always)]
     pub fn release(&self) {
-        let _: () = unsafe { msg_send![self.as_id(), release] };
+        let _: () = unsafe { msg_send![self, release] };
     }
 }
 
@@ -116,107 +116,178 @@ mod coretext;
 pub use coretext::*;
 mod audiotoolbox;
 pub use audiotoolbox::*;
-use objc_ext::ObjcObject;
 
-use std::borrow::{Borrow, BorrowMut, Cow, ToOwned};
-use std::ops::{Deref, DerefMut};
-
-use objc::runtime::Object;
-
-pub struct CocoaObject<T: ObjcObject>(core::ptr::NonNull<T>);
+/// A smart pointer for NSObject children
+#[repr(transparent)]
+pub struct CocoaObject<T: ObjcObject>(*const T);
 unsafe impl<T: ObjcObject + Sync> Sync for CocoaObject<T> {}
 unsafe impl<T: ObjcObject + Send> Send for CocoaObject<T> {}
 impl<T: ObjcObject> Clone for CocoaObject<T> {
+    #[inline(always)]
     fn clone(&self) -> Self {
-        let p: *mut Object = unsafe { msg_send![self.id(), retain] };
-        if p.is_null() {
-            panic!("Retaining reference counted object");
-        }
-
-        CocoaObject(self.0)
+        let _: *mut Object = unsafe { msg_send![self.id(), retain] };
+        Self(self.0)
     }
 }
 impl<T: ObjcObject> Drop for CocoaObject<T> {
+    #[inline(always)]
     fn drop(&mut self) {
         let _: () = unsafe { msg_send![self.id(), release] };
     }
 }
 impl<T: ObjcObject> CocoaObject<T> {
-    pub fn id(&self) -> *mut Object {
-        self.0.as_ptr() as _
+    pub const fn id(&self) -> *const Object {
+        self.0 as _
     }
-    pub fn into_id(self) -> *mut Object {
+
+    pub const fn into_id(self) -> *const Object {
         let id = self.id();
         // no drop executes
         core::mem::forget(self);
 
         id
     }
-    pub fn retain(obj: *mut T) -> Result<Self, ()> {
-        unsafe { Self::from_id(msg_send![obj as *mut Object, retain]) }
+
+    pub const unsafe fn from_retained_ptr_unchecked(ptr: *const T) -> Self {
+        Self(ptr)
     }
-    /// Occurs null checking
-    pub unsafe fn from_id(id: *mut Object) -> Result<Self, ()> {
-        core::ptr::NonNull::new(id as _).map(Self).ok_or(())
+
+    pub const unsafe fn from_retained_id_unchecked(id: *const Object) -> Self {
+        Self(id as _)
     }
-    pub unsafe fn from_id_unchecked(id: *mut Object) -> Self {
-        CocoaObject(core::ptr::NonNull::new_unchecked(id as _))
+
+    #[inline(always)]
+    pub unsafe fn from_retained_ptr(ptr: *const T) -> Option<Self> {
+        if ptr.is_null() {
+            None
+        } else {
+            Some(Self::from_retained_ptr_unchecked(ptr))
+        }
+    }
+
+    #[inline(always)]
+    pub unsafe fn from_retained_id(id: *const Object) -> Option<Self> {
+        if id.is_null() {
+            None
+        } else {
+            Some(Self::from_retained_id_unchecked(id))
+        }
+    }
+
+    pub fn retain(obj: &T) -> Self
+    where
+        T: objc::Message,
+    {
+        let _: *mut Object = unsafe { msg_send![obj, retain] };
+        Self(obj)
     }
 }
-impl<T: ObjcObject> Deref for CocoaObject<T> {
+impl<T: ObjcObject> core::ops::Deref for CocoaObject<T> {
     type Target = T;
+
+    #[inline(always)]
     fn deref(&self) -> &T {
+        unsafe { &*self.0 }
+    }
+}
+impl<T: ObjcObject> core::borrow::Borrow<T> for CocoaObject<T> {
+    #[inline(always)]
+    fn borrow(&self) -> &T {
+        unsafe { &*self.0 }
+    }
+}
+
+/// A smart pointer for NSObject children
+#[repr(transparent)]
+pub struct CocoaMutableObject<T: ObjcObject>(core::ptr::NonNull<T>);
+unsafe impl<T: ObjcObject + Sync> Sync for CocoaMutableObject<T> {}
+unsafe impl<T: ObjcObject + Send> Send for CocoaMutableObject<T> {}
+impl<T: ObjcObject> Clone for CocoaMutableObject<T> {
+    #[inline(always)]
+    fn clone(&self) -> Self {
+        let _: *mut Object = unsafe { msg_send![self.id(), retain] };
+        Self(self.0)
+    }
+}
+impl<T: ObjcObject> Drop for CocoaMutableObject<T> {
+    #[inline(always)]
+    fn drop(&mut self) {
+        let _: () = unsafe { msg_send![self.id(), release] };
+    }
+}
+impl<T: ObjcObject> CocoaMutableObject<T> {
+    pub const fn id(&self) -> *mut Object {
+        self.0.as_ptr() as _
+    }
+
+    pub const fn into_id(self) -> *mut Object {
+        let id = self.id();
+        // no drop executed(moveout a pointer with its ownership)
+        core::mem::forget(self);
+
+        id
+    }
+
+    pub const fn from_retained_ptr_unchecked(ptr: core::ptr::NonNull<T>) -> Self {
+        Self(ptr)
+    }
+
+    pub const unsafe fn from_retained_id_unchecked(id: core::ptr::NonNull<Object>) -> Self {
+        Self(core::ptr::NonNull::new_unchecked(id.as_ptr() as _))
+    }
+
+    #[inline(always)]
+    pub fn from_retained_ptr(id: *mut T) -> Option<Self> {
+        Some(Self(core::ptr::NonNull::new(id)?))
+    }
+
+    #[inline(always)]
+    pub fn from_retained_id(id: *mut Object) -> Option<Self> {
+        Self::from_retained_ptr(id as _)
+    }
+
+    #[inline(always)]
+    pub fn retain(ptr: &mut T) -> Self
+    where
+        T: objc::Message,
+    {
+        let _: *mut Object = unsafe { msg_send![ptr, retain] };
+        Self(core::ptr::NonNull::from(ptr))
+    }
+}
+impl<T: ObjcObject> core::ops::Deref for CocoaMutableObject<T> {
+    type Target = T;
+
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
         unsafe { self.0.as_ref() }
     }
 }
-impl<T: ObjcObject> DerefMut for CocoaObject<T> {
-    fn deref_mut(&mut self) -> &mut T {
+impl<T: ObjcObject> core::ops::DerefMut for CocoaMutableObject<T> {
+    #[inline(always)]
+    fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { self.0.as_mut() }
     }
 }
-impl<T: ObjcObject> Borrow<T> for CocoaObject<T> {
+impl<T: ObjcObject> core::borrow::Borrow<T> for CocoaMutableObject<T> {
+    #[inline(always)]
     fn borrow(&self) -> &T {
         unsafe { self.0.as_ref() }
     }
 }
-impl<T: ObjcObject> BorrowMut<T> for CocoaObject<T> {
+impl<T: ObjcObject> core::borrow::BorrowMut<T> for CocoaMutableObject<T> {
+    #[inline(always)]
     fn borrow_mut(&mut self) -> &mut T {
         unsafe { self.0.as_mut() }
     }
 }
+
 impl ToOwned for NSMenuItem {
     type Owned = CocoaObject<Self>;
+
+    #[inline(always)]
     fn to_owned(&self) -> Self::Owned {
-        unsafe { std::mem::transmute::<_, &CocoaObject<Self>>(self).clone() }
-    }
-}
-unsafe impl<T: ObjcObject> ObjcObject for CocoaObject<T> {
-    fn as_id(&self) -> &objc::runtime::Object {
-        T::as_id(unsafe { self.0.as_ref() })
-    }
-
-    fn as_id_mut(&mut self) -> &mut objc::runtime::Object {
-        T::as_id_mut(unsafe { self.0.as_mut() })
-    }
-}
-
-/// Ref to NSString or Ref to str slice
-pub trait CocoaString {
-    fn to_nsstring(&self) -> Cow<CocoaObject<NSString>>;
-}
-impl CocoaString for CocoaObject<NSString> {
-    fn to_nsstring(&self) -> Cow<CocoaObject<NSString>> {
-        Cow::Borrowed(self)
-    }
-}
-impl CocoaString for str {
-    fn to_nsstring(&self) -> Cow<CocoaObject<NSString>> {
-        Cow::Owned(NSString::from_str(self).unwrap())
-    }
-}
-impl CocoaString for String {
-    fn to_nsstring(&self) -> Cow<CocoaObject<NSString>> {
-        Cow::Owned(NSString::from_str(self).unwrap())
+        CocoaObject::retain(self)
     }
 }
 

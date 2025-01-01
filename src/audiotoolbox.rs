@@ -1,12 +1,17 @@
 #![allow(non_upper_case_globals)]
 //! AudioToolbox
 
-use libc::c_void;
+DefineOpaqueFFIObject! {
+    pub struct OpaqueAudioComponent;
+}
 
-pub enum OpaqueAudioComponent {}
 /// An audio component
 pub type AudioComponent = *mut OpaqueAudioComponent;
-pub enum OpaqueAudioComponentInstance {}
+
+DefineOpaqueFFIObject! {
+    pub struct OpaqueAudioComponentInstance;
+}
+
 /// An component instance, or object, is an audio unit or audio codec.
 pub type AudioComponentInstance = *mut OpaqueAudioComponentInstance;
 /// The data type for a plug-in component that provides audio processing or audio data generation.
@@ -69,22 +74,25 @@ pub struct AudioBufferList {
 pub struct AudioBuffer {
     pub number_channels: u32,
     pub data_byte_size: u32,
-    pub data: *mut c_void,
+    pub data: *mut core::ffi::c_void,
 }
 
-pub type AURenderCallback = extern "C" fn(
-    in_ref_con: *mut c_void,
-    io_action_flags: *mut AudioUnitRenderActionFlags,
-    in_time_stamp: *const AudioTimeStamp,
-    in_bus_number: u32,
-    in_number_frames: u32,
-    io_data: *mut AudioBufferList,
-) -> super::OSStatus;
+pub type AURenderCallback = Option<
+    extern "C" fn(
+        in_ref_con: *mut core::ffi::c_void,
+        io_action_flags: *mut AudioUnitRenderActionFlags,
+        in_time_stamp: *const AudioTimeStamp,
+        in_bus_number: u32,
+        in_number_frames: u32,
+        io_data: *mut AudioBufferList,
+    ) -> super::OSStatus,
+>;
+
 #[repr(C)]
 #[derive(Debug)]
 pub struct AURenderCallbackStruct {
     pub input_proc: AURenderCallback,
-    pub input_proc_ref_con: *mut c_void,
+    pub input_proc_ref_con: *mut core::ffi::c_void,
 }
 
 #[repr(C)]
@@ -97,7 +105,6 @@ pub struct AudioComponentDescription {
     pub component_flags_mask: u32,
 }
 
-#[inline(always)]
 const fn fourcc(bytes: [u8; 4]) -> u32 {
     u32::from_le_bytes(bytes)
 }
@@ -144,7 +151,7 @@ extern "system" {
         in_id: AudioUnitPropertyID,
         in_scope: AudioUnitScope,
         in_element: AudioUnitElement,
-        in_data: *const c_void,
+        in_data: *const core::ffi::c_void,
         in_data_size: u32,
     ) -> super::OSStatus;
 }
