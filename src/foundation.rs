@@ -26,11 +26,11 @@ impl NSString {
     }
 
     #[inline]
-    pub fn from_str(s: &str) -> Result<CocoaObject<Self>, ()> {
+    pub fn from_str(s: &str) -> Result<CocoaMutableObject<Self>, ()> {
         let bytes = s.as_bytes();
 
         unsafe {
-            CocoaObject::from_retained_id(msg_send![Self::alloc(), initWithBytes: bytes.as_ptr() as *const core::ffi::c_void length: bytes.len() encoding: 4 as NSUInteger]).ok_or(())
+            CocoaMutableObject::from_retained_id(msg_send![Self::alloc(), initWithBytes: bytes.as_ptr() as *const core::ffi::c_void length: bytes.len() encoding: 4 as NSUInteger]).ok_or(())
         }
     }
 
@@ -42,14 +42,6 @@ impl NSString {
     #[inline]
     pub fn to_str(&self) -> &str {
         self.to_cstr().to_str().unwrap()
-    }
-}
-impl ToOwned for NSString {
-    type Owned = CocoaObject<Self>;
-
-    #[inline(always)]
-    fn to_owned(&self) -> Self::Owned {
-        CocoaObject::retain(self)
     }
 }
 
