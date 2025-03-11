@@ -205,9 +205,9 @@ DefineCoreObject! {
 /// A reference to an immutable dictionary object.
 pub type CFDictionaryRef = *const CFDictionary;
 /// toll-free bridging
-impl<K: ObjcObject, V: ObjcObject> AsRef<NSDictionary<K, V>> for CFDictionary {
+impl<K: ObjcObject, V: ObjcObject> AsRef<CFDictionary> for NSDictionary<K, V> {
     #[inline(always)]
-    fn as_ref(&self) -> &NSDictionary<K, V> {
+    fn as_ref(&self) -> &CFDictionary {
         unsafe { core::mem::transmute(self) }
     }
 }
